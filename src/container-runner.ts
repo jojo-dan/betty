@@ -122,6 +122,8 @@ function buildVolumeMounts(
     '.claude',
   );
   fs.mkdirSync(groupSessionsDir, { recursive: true });
+  // Claude Agent SDK writes debug logs here; create it so the SDK doesn't crash
+  fs.mkdirSync(path.join(groupSessionsDir, 'debug'), { recursive: true });
   const settingsFile = path.join(groupSessionsDir, 'settings.json');
   if (!fs.existsSync(settingsFile)) {
     fs.writeFileSync(
@@ -169,6 +171,25 @@ function buildVolumeMounts(
   fs.mkdirSync(path.join(groupIpcDir, 'messages'), { recursive: true });
   fs.mkdirSync(path.join(groupIpcDir, 'tasks'), { recursive: true });
   fs.mkdirSync(path.join(groupIpcDir, 'input'), { recursive: true });
+
+  // When host runs as root (VPS/systemd), IPC dirs and sessions dir are
+  // created with root ownership. Container runs as node (uid 1000) and
+  // needs write access. Chown the entire tree to the container user.
+  if (process.getuid?.() === 0) {
+    const chownRecursive = (dir: string, uid: number, gid: number) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        // Use lchownSync to handle dangling symlinks (e.g. debug/latest
+        // points to container-internal path that doesn't exist on host)
+        fs.lchownSync(full, uid, gid);
+        if (entry.isDirectory()) chownRecursive(full, uid, gid);
+      }
+      fs.chownSync(dir, uid, gid);
+    };
+    chownRecursive(groupIpcDir, 1000, 1000);
+    chownRecursive(groupSessionsDir, 1000, 1000);
+  }
+
   mounts.push({
     hostPath: groupIpcDir,
     containerPath: '/workspace/ipc',
