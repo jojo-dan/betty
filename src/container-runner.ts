@@ -179,7 +179,9 @@ function buildVolumeMounts(
     const chownRecursive = (dir: string, uid: number, gid: number) => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
-        fs.chownSync(full, uid, gid);
+        // Use lchownSync to handle dangling symlinks (e.g. debug/latest
+        // points to container-internal path that doesn't exist on host)
+        fs.lchownSync(full, uid, gid);
         if (entry.isDirectory()) chownRecursive(full, uid, gid);
       }
       fs.chownSync(dir, uid, gid);
