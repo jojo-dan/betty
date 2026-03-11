@@ -171,6 +171,10 @@ export class GroupQueue {
       const tempPath = `${filepath}.tmp`;
       fs.writeFileSync(tempPath, JSON.stringify({ type: 'message', text }));
       fs.renameSync(tempPath, filepath);
+      // When host runs as root, chown so container user (uid 1000) can unlink
+      if (process.getuid?.() === 0) {
+        try { fs.chownSync(filepath, 1000, 1000); } catch { /* best-effort */ }
+      }
       return true;
     } catch {
       return false;
@@ -187,7 +191,11 @@ export class GroupQueue {
     const inputDir = path.join(DATA_DIR, 'ipc', state.groupFolder, 'input');
     try {
       fs.mkdirSync(inputDir, { recursive: true });
-      fs.writeFileSync(path.join(inputDir, '_close'), '');
+      const closePath = path.join(inputDir, '_close');
+      fs.writeFileSync(closePath, '');
+      if (process.getuid?.() === 0) {
+        try { fs.chownSync(closePath, 1000, 1000); } catch { /* best-effort */ }
+      }
     } catch {
       // ignore
     }
