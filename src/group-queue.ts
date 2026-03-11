@@ -173,7 +173,11 @@ export class GroupQueue {
       fs.renameSync(tempPath, filepath);
       // When host runs as root, chown so container user (uid 1000) can unlink
       if (process.getuid?.() === 0) {
-        try { fs.chownSync(filepath, 1000, 1000); } catch { /* best-effort */ }
+        try {
+          fs.chownSync(filepath, 1000, 1000);
+        } catch {
+          /* best-effort */
+        }
       }
       return true;
     } catch {
@@ -194,7 +198,11 @@ export class GroupQueue {
       const closePath = path.join(inputDir, '_close');
       fs.writeFileSync(closePath, '');
       if (process.getuid?.() === 0) {
-        try { fs.chownSync(closePath, 1000, 1000); } catch { /* best-effort */ }
+        try {
+          fs.chownSync(closePath, 1000, 1000);
+        } catch {
+          /* best-effort */
+        }
       }
     } catch {
       // ignore
