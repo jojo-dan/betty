@@ -36,3 +36,8 @@ groups/global/*
 .nanoclaw/
 
 agents-sdk-docs
+
+# E2E tests
+tests/.venv/
+tests/.env.telethon
+tests/telethon_session*
