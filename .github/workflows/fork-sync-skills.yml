@@ -62,6 +62,15 @@ jobs:
             exit 0
           fi
 
+          # GITHUB_TOKEN cannot push .github/workflows/ changes — revert to fork's version
+          WORKFLOW_CHANGES=$(git diff --name-only origin/main HEAD -- .github/workflows/)
+          if [ -n "$WORKFLOW_CHANGES" ]; then
+            echo "::notice::Reverting upstream workflow file changes (GITHUB_TOKEN limitation)"
+            echo "$WORKFLOW_CHANGES"
+            git checkout origin/main -- .github/workflows/
+            git commit --amend --no-edit
+          fi
+
           # Validate build
           npm ci
           if ! npm run build; then
