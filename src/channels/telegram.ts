@@ -3,6 +3,7 @@ import { Api, Bot } from 'grammy';
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
 import { readEnvFile } from '../env.js';
 import { logger } from '../logger.js';
+import { getCurrentModel, setModel, getValidAliases } from '../betty-model.js';
 import { registerChannel, ChannelOpts } from './registry.js';
 import {
   Channel,
@@ -73,6 +74,27 @@ export class TelegramChannel implements Channel {
     // Command to check bot status
     this.bot.command('ping', (ctx) => {
       ctx.reply(`${ASSISTANT_NAME} is online.`);
+    });
+
+    // Command to view or change the active Claude model
+    this.bot.command('model', (ctx) => {
+      const arg = (ctx.match as string | undefined)?.trim() || '';
+      if (!arg) {
+        const current = getCurrentModel();
+        ctx.reply(current ?? '기본값 (SDK default)');
+        return;
+      }
+      const resolved = setModel(arg);
+      if (resolved) {
+        ctx.reply(
+          `모델을 ${resolved}로 변경했습니다. 다음 대화부터 적용됩니다.`,
+        );
+      } else {
+        const aliases = getValidAliases().join(', ');
+        ctx.reply(
+          `알 수 없는 모델입니다. 사용 가능: ${aliases}, 또는 claude-로 시작하는 모델 ID`,
+        );
+      }
     });
 
     this.bot.on('message:text', async (ctx) => {
@@ -211,7 +233,7 @@ export class TelegramChannel implements Channel {
     // Start polling — returns a Promise that resolves when started
     return new Promise<void>((resolve) => {
       this.bot!.start({
-        onStart: (botInfo) => {
+        onStart: async (botInfo) => {
           logger.info(
             { username: botInfo.username, id: botInfo.id },
             'Telegram bot connected',
@@ -220,6 +242,11 @@ export class TelegramChannel implements Channel {
           console.log(
             `  Send /chatid to the bot to get a chat's registration ID\n`,
           );
+          await this.bot!.api.setMyCommands([
+            { command: 'chatid', description: '채팅 ID 표시' },
+            { command: 'ping', description: '봇 상태 확인' },
+            { command: 'model', description: '현재 모델 표시 / 모델 변경' },
+          ]);
           resolve();
         },
       });
