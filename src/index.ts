@@ -475,10 +475,13 @@ function ensureContainerSystemRunning(): void {
 
 async function main(): Promise<void> {
   ensureContainerSystemRunning();
-  // Ensure vault-outbox directories exist
-  fs.mkdirSync(path.join(process.cwd(), 'data', 'vault-outbox', 'processed'), {
-    recursive: true,
-  });
+  // Ensure vault-outbox directories exist and are writable by containers (uid 1000)
+  const vaultOutboxDir = path.join(process.cwd(), 'data', 'vault-outbox');
+  fs.mkdirSync(path.join(vaultOutboxDir, 'processed'), { recursive: true });
+  if (process.getuid?.() === 0) {
+    const { execSync } = await import('child_process');
+    execSync(`chown -R 1000:1000 ${vaultOutboxDir}`);
+  }
   initDatabase();
   logger.info('Database initialized');
   loadState();
