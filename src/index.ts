@@ -61,6 +61,7 @@ import { startSchedulerLoop } from './task-scheduler.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 import { getCurrentModel } from './betty-model.js';
+import { startVaultWatcher } from './betty-vault.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -640,6 +641,16 @@ async function main(): Promise<void> {
       writeGroupsSnapshot(gf, im, ag, rj),
   });
   queue.setProcessMessagesFn(processGroupMessages);
+  startVaultWatcher(
+    async (jid, text) => {
+      const channel = findChannel(channels, jid);
+      if (channel) await channel.sendMessage(jid, text);
+    },
+    () => {
+      const entry = Object.entries(registeredGroups).find(([, g]) => g.isMain);
+      return entry ? entry[0] : null;
+    },
+  );
   recoverPendingMessages();
   startMessageLoop().catch((err) => {
     logger.fatal({ err }, 'Message loop crashed unexpectedly');
