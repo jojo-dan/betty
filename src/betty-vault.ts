@@ -18,15 +18,23 @@ export function startVaultWatcher(
 ): void {
   logger.info('Vault watcher started');
 
+  let polling = false;
+
   setInterval(async () => {
+    if (polling) return;
+    polling = true;
+
     const mainJid = getMainGroupJid();
-    if (!mainJid) return;
+    if (!mainJid) {
+      polling = false;
+      return;
+    }
 
     try {
       // 1. 새 JSON 파일 스캔 (아직 추적하지 않는 것)
       const files = fs
         .readdirSync(VAULT_OUTBOX_DIR)
-        .filter((f) => f.endsWith('.json'));
+        .filter((f) => f.endsWith('.json') && !f.startsWith('._'));
 
       for (const file of files) {
         const uuid = file.replace('.json', '');
@@ -52,10 +60,10 @@ export function startVaultWatcher(
         const doneFile = path.join(PROCESSED_DIR, `${uuid}.done`);
 
         if (fs.existsSync(doneFile)) {
-          // 완료 처리
-          await sendMessage(mainJid, '노트 만들어뒀어. 볼트에서 확인해봐.');
+          // 완료 처리 — delete 먼저 (async 중복 방지)
           tracked.delete(uuid);
           delayNotified.delete(uuid);
+          await sendMessage(mainJid, '노트 만들어뒀어. 볼트에서 확인해봐.');
           logger.info({ uuid }, 'Vault note completed');
           continue;
         }
@@ -63,16 +71,18 @@ export function startVaultWatcher(
         // 5분 경과 + 지연 알림 미발송
         const elapsed = Date.now() - createdAt;
         if (elapsed > DELAY_TIMEOUT && !delayNotified.has(uuid)) {
+          delayNotified.add(uuid);
           await sendMessage(
             mainJid,
             '아직 노트가 안 만들어진 것 같아. 랩탑이 꺼져 있으면 켜면 자동으로 처리될 거야. 메모 내용은 내가 들고 있으니까 사라지진 않아.',
           );
-          delayNotified.add(uuid);
           logger.info({ uuid }, 'Vault note delay notification sent');
         }
       }
     } catch (err) {
       logger.error({ err }, 'Vault watcher error');
+    } finally {
+      polling = false;
     }
   }, POLL_INTERVAL);
 }
