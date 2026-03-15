@@ -474,6 +474,10 @@ function ensureContainerSystemRunning(): void {
 
 async function main(): Promise<void> {
   ensureContainerSystemRunning();
+  // Ensure vault-outbox directories exist
+  fs.mkdirSync(path.join(process.cwd(), 'data', 'vault-outbox', 'processed'), {
+    recursive: true,
+  });
   initDatabase();
   logger.info('Database initialized');
   loadState();
