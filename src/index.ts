@@ -62,6 +62,7 @@ import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 import { getCurrentModel } from './betty-model.js';
 import { startVaultWatcher } from './betty-vault.js';
+import { startReminderInboxWatcher } from './betty-reminder-inbox.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -654,6 +655,10 @@ async function main(): Promise<void> {
       return entry ? entry[0] : null;
     },
   );
+  startReminderInboxWatcher(() => {
+    const entry = Object.entries(registeredGroups).find(([, g]) => g.isMain);
+    return entry ? entry[0] : null;
+  });
   recoverPendingMessages();
   startMessageLoop().catch((err) => {
     logger.fatal({ err }, 'Message loop crashed unexpectedly');
