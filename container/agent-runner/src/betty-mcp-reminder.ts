@@ -45,7 +45,7 @@ REMINDER DATE: YYYY-MM-DD format matching the schedule date.`,
       tags: z.array(z.string()).default([]).describe('Tag array'),
       project: z.string().default('').describe('Project name'),
       schedule_value: z.string().describe('Local time ISO 8601 without timezone suffix (e.g., "2026-03-20T09:00:00")'),
-      reminder_date: z.string().describe('Reminder date in YYYY-MM-DD format'),
+      reminder_date: z.string().describe('Reminder datetime in YYYY-MM-DDTHH:mm format (e.g., "2026-03-20T09:00"). Use the same date and time as schedule_value.'),
     },
     async (args) => {
       // Validate schedule_value: must not have timezone suffix
@@ -63,10 +63,10 @@ REMINDER DATE: YYYY-MM-DD format matching the schedule date.`,
         };
       }
 
-      // Validate reminder_date
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(args.reminder_date)) {
+      // Validate reminder_date (YYYY-MM-DD or YYYY-MM-DDTHH:mm)
+      if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(args.reminder_date)) {
         return {
-          content: [{ type: 'text' as const, text: `Invalid reminder_date: "${args.reminder_date}". Use YYYY-MM-DD format.` }],
+          content: [{ type: 'text' as const, text: `Invalid reminder_date: "${args.reminder_date}". Use YYYY-MM-DDTHH:mm format (e.g., "2026-03-20T09:00").` }],
           isError: true,
         };
       }

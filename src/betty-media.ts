@@ -114,7 +114,10 @@ export function cleanupMediaFiles(): void {
       try {
         fs.unlinkSync(f.path);
         total -= f.size;
-        logger.debug({ filePath: f.path }, 'Cleaned up media file (cap exceeded)');
+        logger.debug(
+          { filePath: f.path },
+          'Cleaned up media file (cap exceeded)',
+        );
       } catch {
         // Skip if already deleted
       }

@@ -719,7 +719,14 @@ describe('TelegramChannel', () => {
 
       const ctx = createMediaCtx({
         extra: {
-          photo: [{ file_id: 'fid123', file_unique_id: 'uniq123', width: 100, height: 100 }],
+          photo: [
+            {
+              file_id: 'fid123',
+              file_unique_id: 'uniq123',
+              width: 100,
+              height: 100,
+            },
+          ],
         },
       });
       await triggerMediaMessage('message:photo', ctx);
@@ -734,7 +741,9 @@ describe('TelegramChannel', () => {
       );
       expect(opts.onMessage).toHaveBeenCalledWith(
         'tg:100200300',
-        expect.objectContaining({ content: '[Photo: /workspace/media/photo_uniq123.jpg]' }),
+        expect.objectContaining({
+          content: '[Photo: /workspace/media/photo_uniq123.jpg]',
+        }),
       );
     });
 
@@ -746,7 +755,14 @@ describe('TelegramChannel', () => {
 
       const ctx = createMediaCtx({
         extra: {
-          photo: [{ file_id: 'fid123', file_unique_id: 'uniq123', width: 100, height: 100 }],
+          photo: [
+            {
+              file_id: 'fid123',
+              file_unique_id: 'uniq123',
+              width: 100,
+              height: 100,
+            },
+          ],
         },
       });
       await triggerMediaMessage('message:photo', ctx);
@@ -768,7 +784,14 @@ describe('TelegramChannel', () => {
       const ctx = createMediaCtx({
         caption: 'What is this?',
         extra: {
-          photo: [{ file_id: 'fid456', file_unique_id: 'uniq456', width: 100, height: 100 }],
+          photo: [
+            {
+              file_id: 'fid456',
+              file_unique_id: 'uniq456',
+              width: 100,
+              height: 100,
+            },
+          ],
         },
       });
       await triggerMediaMessage('message:photo', ctx);
@@ -790,13 +813,17 @@ describe('TelegramChannel', () => {
       await channel.connect();
 
       const ctx = createMediaCtx({
-        extra: { voice: { file_id: 'vfid', file_unique_id: 'voiceuniq', duration: 5 } },
+        extra: {
+          voice: { file_id: 'vfid', file_unique_id: 'voiceuniq', duration: 5 },
+        },
       });
       await triggerMediaMessage('message:voice', ctx);
 
       expect(opts.onMessage).toHaveBeenCalledWith(
         'tg:100200300',
-        expect.objectContaining({ content: '[Voice: /workspace/media/voice_voiceuniq.oga]' }),
+        expect.objectContaining({
+          content: '[Voice: /workspace/media/voice_voiceuniq.oga]',
+        }),
       );
     });
 
@@ -807,7 +834,9 @@ describe('TelegramChannel', () => {
       await channel.connect();
 
       const ctx = createMediaCtx({
-        extra: { voice: { file_id: 'vfid', file_unique_id: 'voiceuniq', duration: 5 } },
+        extra: {
+          voice: { file_id: 'vfid', file_unique_id: 'voiceuniq', duration: 5 },
+        },
       });
       await triggerMediaMessage('message:voice', ctx);
 

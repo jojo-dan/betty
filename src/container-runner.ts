@@ -282,6 +282,11 @@ function buildContainerArgs(
     args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
   }
 
+  // Pass OpenAI API key for skills that use Whisper STT (betty-voice skill)
+  if (process.env.OPENAI_API_KEY) {
+    args.push('-e', `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}`);
+  }
+
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 

@@ -20,7 +20,7 @@ trigger: 사용자가 "기록해줘", "메모해줘", "노트로", URL 공유, "
   "id": "uuid-v4",
   "type": "idea | clipping | guide | learning | journal",
   "content": "노트 본문 (markdown)",
-  "title_hint": "파일명 후보 (빈 문자열이면 content에서 자동 추출)",
+  "title_hint": "영문 kebab-case 파일명 (필수). 한국어 제목을 의미 있는 영문으로 변환",
   "tags": ["태그1", "태그2"],
   "project": "프로젝트명 (없으면 빈 문자열)",
   "source": "telegram",
@@ -66,7 +66,7 @@ mcp__nanoclaw__create_reminder({
   schedule_value: "2026-03-20T09:00:00",   // ⚠️ 로컬 시간, timezone suffix 없음!
   reminder_date: "2026-03-20",
   type: "idea",          // 선택. 기본값 "idea"
-  title_hint: "파일명 후보",  // 선택
+  title_hint: "remind-tim-ferriss-contact",  // 영문 kebab-case (필수)
   tags: ["태그"],         // 선택
   project: ""            // 선택
 })
@@ -81,7 +81,7 @@ mcp__nanoclaw__create_reminder({
 | `schedule_value` | O | 로컬 시간 (KST). **`+09:00`이나 `Z` suffix를 절대 붙이지 마라** |
 | `reminder_date` | O | 볼트 노트 frontmatter용 날짜 (YYYY-MM-DD) |
 | `type` | X | 기본값 `"idea"`. idea / clipping / guide / learning / journal |
-| `title_hint` | X | 파일명 후보. 빈 문자열이면 content에서 자동 추출 |
+| `title_hint` | O | 영문 kebab-case 파일명 (필수). 한국어 내용을 의미 있는 영문으로 변환하여 제공 |
 | `tags` | X | 관련 태그 배열 |
 | `project` | X | 관련 프로젝트명 |
 
@@ -140,7 +140,7 @@ mcp__nanoclaw__cancel_task({
 
 - id는 반드시 UUID v4 형식
 - created는 현재 시각 (ISO 8601, KST +09:00)
-- title_hint: 콘텐츠에서 적절한 파일명 후보를 추출. 한국어도 가능. 빈 문자열이면 로컬 워처가 content에서 자동 추출
+- title_hint: 반드시 영문 kebab-case로 제공 (필수). 한국어 제목/내용을 의미 있는 영문으로 변환. 예: "인간 제국 쇠망사" → "decline-fall-human-empire", "아이란 그런 것이다" → "what-children-are", "노트 관리 전략" → "note-management-strategy"
 - tags: 내용에서 관련 태그 추출 (없으면 빈 배열)
 - project: 특정 프로젝트와 관련 있으면 프로젝트명, 아니면 빈 문자열
 - reminder: 리마인더 날짜만 기록 (YYYY-MM-DD). 시각은 `mcp__nanoclaw__create_reminder`의 `schedule_value`에 포함 (로컬 시간, timezone suffix 없음)

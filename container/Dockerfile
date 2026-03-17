@@ -26,6 +26,18 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Install yt-dlp latest binary for YouTube subtitle extraction (betty-youtube skill)
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
+    chmod +x /usr/local/bin/yt-dlp
+
+# Install ffmpeg for audio format conversion (betty-voice skill)
+RUN apt-get update && apt-get install -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install pandoc for document conversion (betty-document skill, DOCX support)
+RUN apt-get update && apt-get install -y pandoc && \
+    rm -rf /var/lib/apt/lists/*
+
 # Set Chromium path for agent-browser
 ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium

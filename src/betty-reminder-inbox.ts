@@ -31,7 +31,10 @@ export function startReminderInboxWatcher(
       // JSON 파일 스캔 (._로 시작하는 파일 제외)
       const files = fs
         .readdirSync(REMINDER_INBOX_DIR)
-        .filter((f) => f.endsWith('.json') && !f.startsWith('.') && !f.startsWith('._'));
+        .filter(
+          (f) =>
+            f.endsWith('.json') && !f.startsWith('.') && !f.startsWith('._'),
+        );
 
       for (const file of files) {
         try {
@@ -52,7 +55,10 @@ export function startReminderInboxWatcher(
           if (action === 'create') {
             const scheduleValue = json.schedule_value;
             if (!scheduleValue) {
-              logger.error({ file, id }, 'Reminder inbox: missing schedule_value for create');
+              logger.error(
+                { file, id },
+                'Reminder inbox: missing schedule_value for create',
+              );
               fs.renameSync(filePath, path.join(PROCESSED_DIR, file));
               continue;
             }
@@ -60,7 +66,10 @@ export function startReminderInboxWatcher(
             // schedule_value 파싱 검증
             const nextRun = new Date(scheduleValue);
             if (isNaN(nextRun.getTime())) {
-              logger.error({ file, id, scheduleValue }, 'Reminder inbox: invalid schedule_value');
+              logger.error(
+                { file, id, scheduleValue },
+                'Reminder inbox: invalid schedule_value',
+              );
               fs.renameSync(filePath, path.join(PROCESSED_DIR, file));
               continue;
             }
@@ -79,21 +88,35 @@ export function startReminderInboxWatcher(
             });
 
             logger.info({ id, scheduleValue }, 'Reminder inbox: task created');
-
           } else if (action === 'update') {
             const existing = getTaskById(id);
             if (!existing) {
-              logger.error({ file, id }, 'Reminder inbox: task not found for update');
+              logger.error(
+                { file, id },
+                'Reminder inbox: task not found for update',
+              );
               fs.renameSync(filePath, path.join(PROCESSED_DIR, file));
               continue;
             }
 
-            const updates: Partial<Pick<import('./types.js').ScheduledTask, 'prompt' | 'schedule_type' | 'schedule_value' | 'next_run' | 'status'>> = {};
+            const updates: Partial<
+              Pick<
+                import('./types.js').ScheduledTask,
+                | 'prompt'
+                | 'schedule_type'
+                | 'schedule_value'
+                | 'next_run'
+                | 'status'
+              >
+            > = {};
             if (json.prompt) updates.prompt = json.prompt;
             if (json.schedule_value) {
               const nextRun = new Date(json.schedule_value);
               if (isNaN(nextRun.getTime())) {
-                logger.error({ file, id }, 'Reminder inbox: invalid schedule_value for update');
+                logger.error(
+                  { file, id },
+                  'Reminder inbox: invalid schedule_value for update',
+                );
                 fs.renameSync(filePath, path.join(PROCESSED_DIR, file));
                 continue;
               }
@@ -103,34 +126,39 @@ export function startReminderInboxWatcher(
 
             updateTask(id, updates);
             logger.info({ id, updates }, 'Reminder inbox: task updated');
-
           } else if (action === 'cancel') {
             const existing = getTaskById(id);
             if (!existing) {
-              logger.error({ file, id }, 'Reminder inbox: task not found for cancel');
+              logger.error(
+                { file, id },
+                'Reminder inbox: task not found for cancel',
+              );
               fs.renameSync(filePath, path.join(PROCESSED_DIR, file));
               continue;
             }
 
             deleteTask(id);
             logger.info({ id }, 'Reminder inbox: task cancelled');
-
           } else {
             logger.error({ file, action }, 'Reminder inbox: unknown action');
           }
 
           // 처리 완료: processed로 이동
           fs.renameSync(filePath, path.join(PROCESSED_DIR, file));
-
         } catch (fileErr) {
-          logger.error({ file, err: fileErr }, 'Reminder inbox: error processing file');
+          logger.error(
+            { file, err: fileErr },
+            'Reminder inbox: error processing file',
+          );
           // 파싱 실패 등의 에러는 파일을 스킵하고 계속
           try {
             fs.renameSync(
               path.join(REMINDER_INBOX_DIR, file),
               path.join(PROCESSED_DIR, file),
             );
-          } catch { /* 이동 실패도 무시 */ }
+          } catch {
+            /* 이동 실패도 무시 */
+          }
         }
       }
     } catch (err) {
