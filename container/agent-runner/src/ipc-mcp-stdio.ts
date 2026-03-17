@@ -10,6 +10,7 @@ import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
 import { CronExpressionParser } from 'cron-parser';
+import { registerCreateReminderTool } from './betty-mcp-reminder.js';
 
 const IPC_DIR = '/workspace/ipc';
 const MESSAGES_DIR = path.join(IPC_DIR, 'messages');
@@ -39,6 +40,9 @@ const server = new McpServer({
   version: '1.0.0',
 });
 
+// Betty-specific tools
+registerCreateReminderTool(server, chatJid, groupFolder);
+
 server.tool(
   'send_message',
   "Send a message to the user or group immediately while you're still running. Use this for progress updates or to send multiple messages. You can call this multiple times.",
@@ -64,7 +68,9 @@ server.tool(
 
 server.tool(
   'schedule_task',
-  `Schedule a recurring or one-time task. The task will run as a full agent with access to all tools. Returns the task ID for future reference. To modify an existing task, use update_task instead.
+  `NOT for reminders — use create_reminder instead.\n\nSchedule a recurring or one-time task. The task will run as a full agent with access to all tools. Returns the task ID for future reference. To modify an existing task, use update_task instead.
+
+REMINDER REQUESTS: When scheduling a reminder for the user, you MUST ALSO create a vault-outbox JSON file at /workspace/extra/vault-outbox/{uuid}.json with a "reminder" field (YYYY-MM-DD). See betty-vault SKILL.md for the full schema. If you skip the vault-outbox file, the reminder won't appear in the user's Obsidian vault.
 
 CONTEXT MODE - Choose based on task type:
 \u2022 "group": Task runs in the group's conversation context, with access to chat history. Use for tasks that need context about ongoing discussions, user preferences, or recent interactions.
