@@ -12,6 +12,7 @@ vi.mock('../env.js', () => ({ readEnvFile: vi.fn(() => ({})) }));
 vi.mock('../config.js', () => ({
   ASSISTANT_NAME: 'Andy',
   TRIGGER_PATTERN: /^@Andy\b/i,
+  DATA_DIR: '/tmp/betty-test-data',
 }));
 
 // Mock logger
@@ -22,6 +23,12 @@ vi.mock('../logger.js', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+}));
+
+// Mock betty-media
+const mockDownloadMediaFile = vi.fn();
+vi.mock('../betty-media.js', () => ({
+  downloadMediaFile: (...args: any[]) => mockDownloadMediaFile(...args),
 }));
 
 // --- Grammy mock ---
@@ -40,6 +47,7 @@ vi.mock('grammy', () => ({
     api = {
       sendMessage: vi.fn().mockResolvedValue(undefined),
       sendChatAction: vi.fn().mockResolvedValue(undefined),
+      getFile: vi.fn().mockResolvedValue({ file_path: 'photos/file_0.jpg' }),
     };
 
     constructor(token: string) {
@@ -181,6 +189,7 @@ async function triggerMediaMessage(
 describe('TelegramChannel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDownloadMediaFile.mockResolvedValue(null); // default: download fails → fallback
   });
 
   afterEach(() => {
@@ -694,6 +703,118 @@ describe('TelegramChannel', () => {
       await triggerMediaMessage('message:photo', ctx);
 
       expect(opts.onMessage).not.toHaveBeenCalled();
+    });
+  });
+
+  // --- Media download ---
+
+  describe('media download', () => {
+    it('calls downloadMediaFile for photo with file_id', async () => {
+      mockDownloadMediaFile.mockResolvedValue(
+        '/opt/betty/data/media/test-group/photo_uniq123.jpg',
+      );
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts);
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: {
+          photo: [{ file_id: 'fid123', file_unique_id: 'uniq123', width: 100, height: 100 }],
+        },
+      });
+      await triggerMediaMessage('message:photo', ctx);
+
+      expect(mockDownloadMediaFile).toHaveBeenCalledWith(
+        expect.anything(),
+        'fid123',
+        'uniq123',
+        'test-group',
+        'photo',
+        'jpg',
+      );
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Photo: /workspace/media/photo_uniq123.jpg]' }),
+      );
+    });
+
+    it('falls back to [Photo] when download fails', async () => {
+      mockDownloadMediaFile.mockResolvedValue(null);
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts);
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: {
+          photo: [{ file_id: 'fid123', file_unique_id: 'uniq123', width: 100, height: 100 }],
+        },
+      });
+      await triggerMediaMessage('message:photo', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Photo]' }),
+      );
+    });
+
+    it('includes caption after photo path on success', async () => {
+      mockDownloadMediaFile.mockResolvedValue(
+        '/opt/betty/data/media/test-group/photo_uniq456.jpg',
+      );
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts);
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        caption: 'What is this?',
+        extra: {
+          photo: [{ file_id: 'fid456', file_unique_id: 'uniq456', width: 100, height: 100 }],
+        },
+      });
+      await triggerMediaMessage('message:photo', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({
+          content: '[Photo: /workspace/media/photo_uniq456.jpg] What is this?',
+        }),
+      );
+    });
+
+    it('uses [Voice: path] on successful voice download', async () => {
+      mockDownloadMediaFile.mockResolvedValue(
+        '/opt/betty/data/media/test-group/voice_voiceuniq.oga',
+      );
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts);
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: { voice: { file_id: 'vfid', file_unique_id: 'voiceuniq', duration: 5 } },
+      });
+      await triggerMediaMessage('message:voice', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Voice: /workspace/media/voice_voiceuniq.oga]' }),
+      );
+    });
+
+    it('falls back to [Voice message] when voice download fails', async () => {
+      mockDownloadMediaFile.mockResolvedValue(null);
+      const opts = createTestOpts();
+      const channel = new TelegramChannel('test-token', opts);
+      await channel.connect();
+
+      const ctx = createMediaCtx({
+        extra: { voice: { file_id: 'vfid', file_unique_id: 'voiceuniq', duration: 5 } },
+      });
+      await triggerMediaMessage('message:voice', ctx);
+
+      expect(opts.onMessage).toHaveBeenCalledWith(
+        'tg:100200300',
+        expect.objectContaining({ content: '[Voice message]' }),
+      );
     });
   });
 

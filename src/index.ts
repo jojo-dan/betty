@@ -63,6 +63,7 @@ import { logger } from './logger.js';
 import { getCurrentModel } from './betty-model.js';
 import { startVaultWatcher } from './betty-vault.js';
 import { startReminderInboxWatcher } from './betty-reminder-inbox.js';
+import { startMediaCleanup } from './betty-media.js';
 
 // Re-export for backwards compatibility during refactor
 export { escapeXml, formatMessages } from './router.js';
@@ -659,6 +660,7 @@ async function main(): Promise<void> {
     const entry = Object.entries(registeredGroups).find(([, g]) => g.isMain);
     return entry ? entry[0] : null;
   });
+  startMediaCleanup();
   recoverPendingMessages();
   startMessageLoop().catch((err) => {
     logger.fatal({ err }, 'Message loop crashed unexpectedly');

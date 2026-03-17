@@ -212,13 +212,35 @@ function buildVolumeMounts(
     group.folder,
     'agent-runner-src',
   );
-  if (!fs.existsSync(groupAgentRunnerDir) && fs.existsSync(agentRunnerSrc)) {
-    fs.cpSync(agentRunnerSrc, groupAgentRunnerDir, { recursive: true });
+  if (fs.existsSync(agentRunnerSrc)) {
+    // Always sync source so new/updated files (e.g., new MCP tools) propagate
+    // to existing sessions. Agents may customize files in-place, so we only
+    // copy files that are missing or older than the canonical source.
+    fs.mkdirSync(groupAgentRunnerDir, { recursive: true });
+    for (const entry of fs.readdirSync(agentRunnerSrc)) {
+      const src = path.join(agentRunnerSrc, entry);
+      const dst = path.join(groupAgentRunnerDir, entry);
+      const srcStat = fs.statSync(src);
+      if (!srcStat.isFile()) continue;
+      const dstExists = fs.existsSync(dst);
+      if (!dstExists || fs.statSync(dst).mtimeMs < srcStat.mtimeMs) {
+        fs.copyFileSync(src, dst);
+      }
+    }
   }
   mounts.push({
     hostPath: groupAgentRunnerDir,
     containerPath: '/app/src',
     readonly: false,
+  });
+
+  // Media files: mount group's media directory read-only so Claude can access downloaded files
+  const mediaDir = path.join(DATA_DIR, 'media', group.folder);
+  fs.mkdirSync(mediaDir, { recursive: true });
+  mounts.push({
+    hostPath: mediaDir,
+    containerPath: '/workspace/media',
+    readonly: true,
   });
 
   // Additional mounts validated against external allowlist (tamper-proof from containers)

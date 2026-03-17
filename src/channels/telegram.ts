@@ -4,6 +4,7 @@ import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
 import { readEnvFile } from '../env.js';
 import { logger } from '../logger.js';
 import { getCurrentModel, setModel, getValidAliases } from '../betty-model.js';
+import { downloadMediaFile } from '../betty-media.js';
 import { registerChannel, ChannelOpts } from './registry.js';
 import {
   Channel,
@@ -177,7 +178,7 @@ export class TelegramChannel implements Channel {
     });
 
     // Handle non-text messages with placeholders so the agent knows something was sent
-    const storeNonText = (ctx: any, placeholder: string) => {
+    const storeNonText = async (ctx: any, placeholder: string) => {
       const chatJid = `tg:${ctx.chat.id}`;
       const group = this.opts.registeredGroups()[chatJid];
       if (!group) return;
@@ -210,13 +211,106 @@ export class TelegramChannel implements Channel {
       });
     };
 
-    this.bot.on('message:photo', (ctx) => storeNonText(ctx, '[Photo]'));
+    const storeMediaMessage = async (
+      ctx: any,
+      fileId: string | undefined,
+      fileUniqueId: string | undefined,
+      prefix: string,
+      ext: string,
+      successTemplate: (fileName: string) => string,
+      fallback: string,
+    ) => {
+      const chatJid = `tg:${ctx.chat.id}`;
+      const group = this.opts.registeredGroups()[chatJid];
+      if (!group) return;
+
+      let content = fallback;
+      if (fileId && fileUniqueId && this.bot) {
+        const filePath = await downloadMediaFile(
+          this.bot,
+          fileId,
+          fileUniqueId,
+          group.folder,
+          prefix,
+          ext,
+        );
+        if (filePath) {
+          const fileName = filePath.split('/').pop()!;
+          content = successTemplate(fileName);
+        }
+      }
+
+      const caption = ctx.message.caption ? ` ${ctx.message.caption}` : '';
+      const timestamp = new Date(ctx.message.date * 1000).toISOString();
+      const senderName =
+        ctx.from?.first_name ||
+        ctx.from?.username ||
+        ctx.from?.id?.toString() ||
+        'Unknown';
+      const isGroup =
+        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+
+      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
+      this.opts.onMessage(chatJid, {
+        id: ctx.message.message_id.toString(),
+        chat_jid: chatJid,
+        sender: ctx.from?.id?.toString() || '',
+        sender_name: senderName,
+        content: `${content}${caption}`,
+        timestamp,
+        is_from_me: false,
+      });
+    };
+
+    this.bot.on('message:photo', (ctx) => {
+      const photo = ctx.message.photo?.at(-1);
+      return storeMediaMessage(
+        ctx,
+        photo?.file_id,
+        photo?.file_unique_id,
+        'photo',
+        'jpg',
+        (f) => `[Photo: /workspace/media/${f}]`,
+        '[Photo]',
+      );
+    });
     this.bot.on('message:video', (ctx) => storeNonText(ctx, '[Video]'));
-    this.bot.on('message:voice', (ctx) => storeNonText(ctx, '[Voice message]'));
-    this.bot.on('message:audio', (ctx) => storeNonText(ctx, '[Audio]'));
+    this.bot.on('message:voice', (ctx) => {
+      const voice = ctx.message.voice;
+      return storeMediaMessage(
+        ctx,
+        voice?.file_id,
+        voice?.file_unique_id,
+        'voice',
+        'oga',
+        (f) => `[Voice: /workspace/media/${f}]`,
+        '[Voice message]',
+      );
+    });
+    this.bot.on('message:audio', (ctx) => {
+      const audio = ctx.message.audio;
+      return storeMediaMessage(
+        ctx,
+        audio?.file_id,
+        audio?.file_unique_id,
+        'audio',
+        'mp3',
+        (f) => `[Audio: /workspace/media/${f}]`,
+        '[Audio]',
+      );
+    });
     this.bot.on('message:document', (ctx) => {
-      const name = ctx.message.document?.file_name || 'file';
-      storeNonText(ctx, `[Document: ${name}]`);
+      const doc = ctx.message.document;
+      const name = doc?.file_name || 'file';
+      return storeMediaMessage(
+        ctx,
+        doc?.file_id,
+        doc?.file_unique_id,
+        'doc',
+        name.includes('.') ? name.split('.').pop()! : 'bin',
+        (f) => `[Document: /workspace/media/${f}]`,
+        `[Document: ${name}]`,
+      );
     });
     this.bot.on('message:sticker', (ctx) => {
       const emoji = ctx.message.sticker?.emoji || '';
