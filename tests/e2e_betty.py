@@ -43,11 +43,30 @@ async def wait_for_response(client, bot_entity, after_date, timeout=TIMEOUT):
     return None
 
 
+def reset_betty_session():
+    """Reset Betty's telegram_main session for test isolation."""
+    print("--- 세션 초기화 (테스트 격리) ---")
+    cmds = [
+        "systemctl stop betty",
+        f'sqlite3 {DB_PATH} "DELETE FROM sessions WHERE group_folder=\'telegram_main\';"',
+        "rm -rf /opt/betty/data/sessions/telegram_main/.claude/debug/*",
+        "systemctl start betty",
+    ]
+    for cmd in cmds:
+        subprocess.run(cmd, shell=True, timeout=120)
+    # Wait for betty to fully start
+    time.sleep(5)
+    print("  ✅ 세션 초기화 완료\n")
+
+
 async def main():
     client = TelegramClient(SESSION_FILE, API_ID, API_HASH)
     await client.start()
 
     print(f"Logged in as: {(await client.get_me()).first_name}")
+
+    # Reset session before tests for isolation (prevents false positives in S-2 multi-turn)
+    reset_betty_session()
 
     bot = await client.get_entity(BOT_USERNAME)
     results = []
