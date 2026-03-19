@@ -287,6 +287,11 @@ function buildContainerArgs(
     args.push('-e', `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}`);
   }
 
+  // Pass Webshare proxy URL for skills that use residential proxy (betty-youtube skill)
+  if (process.env.WEBSHARE_PROXY_URL) {
+    args.push('-e', `WEBSHARE_PROXY_URL=${process.env.WEBSHARE_PROXY_URL}`);
+  }
+
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 
