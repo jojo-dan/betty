@@ -74,7 +74,7 @@ export class TelegramChannel implements Channel {
 
     // Command to check bot status
     this.bot.command('ping', (ctx) => {
-      ctx.reply(`${ASSISTANT_NAME} is online.`);
+      ctx.reply('베티는 여기 있는 거야.');
     });
 
     // Command to view or change the active Claude model
@@ -82,18 +82,22 @@ export class TelegramChannel implements Channel {
       const arg = (ctx.match as string | undefined)?.trim() || '';
       if (!arg) {
         const current = getCurrentModel();
-        ctx.reply(current ?? '기본값 (SDK default)');
+        if (current) {
+          ctx.reply(`지금 베티가 쓰는 건 ${current}인 거야.`);
+        } else {
+          ctx.reply(
+            '지금은 기본값인 거야. 바꾸고 싶으면 /model [모델명]으로 말해.',
+          );
+        }
         return;
       }
       const resolved = setModel(arg);
       if (resolved) {
-        ctx.reply(
-          `모델을 ${resolved}로 변경했습니다. 다음 대화부터 적용됩니다.`,
-        );
+        ctx.reply(`${resolved}로 바꿨어. 다음 대화부터 적용되는 거야.`);
       } else {
         const aliases = getValidAliases().join(', ');
         ctx.reply(
-          `알 수 없는 모델입니다. 사용 가능: ${aliases}, 또는 claude-로 시작하는 모델 ID`,
+          `${arg}는 베티가 모르는 모델인 거야. 사용 가능한 건 ${aliases} — 또는 claude-로 시작하는 모델 ID일까.`,
         );
       }
     });
