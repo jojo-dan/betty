@@ -16,6 +16,7 @@ import {
   updateTask,
   updateTaskAfterRun,
 } from './db.js';
+import { writeVaultOutboxUpdateReminder } from './betty-vault.js';
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
 import { logger } from './logger.js';
@@ -236,6 +237,11 @@ async function runTask(
       ? result.slice(0, 200)
       : 'Completed';
   updateTaskAfterRun(task.id, nextRun, resultSummary);
+
+  // 발송 완료 후 vault 노트 상태 동기화 (once 타입 + 성공 시에만)
+  if (task.schedule_type === 'once' && !error) {
+    writeVaultOutboxUpdateReminder(task.id, 'done');
+  }
 }
 
 let schedulerRunning = false;

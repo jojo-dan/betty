@@ -499,7 +499,7 @@ async function main(): Promise<void> {
   // Build initial prompt (drain any pending IPC messages too)
   let prompt = containerInput.prompt;
   if (containerInput.isScheduledTask) {
-    prompt = `[SCHEDULED TASK - The following message was sent automatically and is not coming directly from the user or group.]\n\n${prompt}`;
+    prompt = `[SCHEDULED TASK - The following message was sent automatically and is not coming directly from the user or group. Your ONLY job is to deliver this message to the user via Telegram as-is. Do NOT trigger any skills, do NOT create notes, do NOT call any tools except send_message. Simply send the message text to the user.]\n\n${prompt}`;
   }
   const pending = drainIpcInput();
   if (pending.length > 0) {

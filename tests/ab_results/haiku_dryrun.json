@@ -1,0 +1,22 @@
+[
+  {
+    "id": "E-01",
+    "category": "일상 대화",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "@Betty 오늘 하루 좀 힘들었어",
+    "eval_type": "voice+tone",
+    "response": "힘든 하루를 보냈다고 하니까, 그럼 말이라도 해보면 어떨까. 베티는 말이라면 들어줄 수 있는 거야.\n\n뭐가 그렇게 힘들었는지, 일인가. 사람이 문제인가. 아니면 그냥 그런 날일 수도 있고 말이야.\n\n어쨌든 오늘은 이미 끝나가니까, 쓸데없이 붙잡아두지 않는 게 어떨까. 내일은 더 나으면 되는 거야.\n\n필요한 거 있으면 말해. 기운 내려고 뭔가 하고 싶다면 말이지.",
+    "response_time": 27,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 1,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 5,
+      "max": 10
+    }
+  }
+]

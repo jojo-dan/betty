@@ -2,6 +2,10 @@
 trigger: 사용자가 "기록해줘", "메모해줘", "노트로", URL 공유, "리마인드해줘", "알려줘", "remind", "까먹지 않게", "잊지 않도록" 등 볼트 저장 또는 리마인더 요청 시
 ---
 
+## Scheduled Task 컨텍스트 제외
+
+프롬프트 최상단에 `[SCHEDULED TASK - ...]` 마커가 있으면 이 SKILL을 절대 트리거하지 마라. 리마인더 알림 텍스트가 "알려줘", "기록해줘" 등의 패턴을 포함하더라도, scheduled task 컨텍스트에서는 betty-vault SKILL을 사용하지 않는다. 단순히 메시지를 사용자에게 전달하는 것이 유일한 임무다.
+
 # betty-vault: 볼트 노트 생성
 
 사용자 메시지를 분석하여 vault-outbox JSON을 생성한다.
@@ -25,7 +29,13 @@ trigger: 사용자가 "기록해줘", "메모해줘", "노트로", URL 공유, "
   "project": "프로젝트명 (없으면 빈 문자열)",
   "source": "telegram",
   "created": "ISO 8601 (예: 2026-03-15T14:30:00+09:00)",
-  "reminder": "YYYY-MM-DD (선택, 리마인더 날짜)"
+  "reminder": "YYYY-MM-DD (선택, 리마인더 날짜)",
+  "attachments": [
+    {
+      "source_path": "/workspace/media/photo_AgACBgIAAxk.jpg",
+      "filename": "photo_AgACBgIAAxk.jpg"
+    }
+  ]
 }
 ```
 
@@ -136,6 +146,29 @@ mcp__nanoclaw__cancel_task({
 
 `create_reminder` 호출 결과에 taskId가 반환된다. 에이전트는 대화 컨텍스트에서 이 taskId를 추적하여 변경/취소 대상을 식별한다. 여러 리마인더가 있는 경우 사용자가 언급한 내용(날짜, 키워드)으로 대상을 특정한다.
 
+### vault 노트 상태 동기화 (자동)
+
+`mcp__nanoclaw__cancel_task` 또는 `mcp__nanoclaw__update_task` 호출 시, Betty가 자동으로 vault-outbox에 상태 변경 JSON을 작성한다. 에이전트가 직접 vault-outbox를 조작하지 않아도 된다.
+
+### 재등록 / 스누즈: `mcp__nanoclaw__create_reminder` 재호출
+
+"아까 그거 내일 다시 알려줘", "10분 뒤에 다시 알려줘" 등 완료/취소된 리마인더 재활성화 요청 시:
+이전 taskId와 무관하게 `mcp__nanoclaw__create_reminder`를 새로 호출한다.
+Betty가 old taskId를 기반으로 vault 노트의 reminder-id/reminder-status를 자동 갱신한다.
+
+## 첨부 미디어 처리
+
+사용자 메시지에 `[Photo: <경로>]`, `[Animation: <경로>]`, `[Document: <경로>]` 패턴이 있고 노트 저장 요청인 경우, JSON의 `attachments` 배열에 해당 파일 정보를 포함한다.
+
+- `source_path`: 컨테이너 내 경로 그대로 (`/workspace/media/photo_xxx.jpg`)
+- `filename`: 경로의 basename (`photo_xxx.jpg`)
+- 대상: photo(jpg), animation(gif), document(이미지 확장자 jpg/jpeg/png/gif/webp)
+- video, voice, audio 등 비이미지 미디어는 attachments에 포함하지 않는다
+
+vault-watcher.sh가 attachments를 읽고 VPS에서 로컬 `~/hq/personal/attachments/`로 SCP 복사하며, 노트 content에 `![[filename]]`을 자동 임베드한다. 에이전트가 직접 `![[filename]]`을 content에 넣지 않는다.
+
+첨부 미디어가 없는 노트는 `attachments` 필드를 생략하거나 빈 배열 `[]`를 사용한다.
+
 ## 주의사항
 
 - id는 반드시 UUID v4 형식
@@ -144,3 +177,45 @@ mcp__nanoclaw__cancel_task({
 - tags: 내용에서 관련 태그 추출 (없으면 빈 배열)
 - project: 특정 프로젝트와 관련 있으면 프로젝트명, 아니면 빈 문자열
 - reminder: 리마인더 날짜만 기록 (YYYY-MM-DD). 시각은 `mcp__nanoclaw__create_reminder`의 `schedule_value`에 포함 (로컬 시간, timezone suffix 없음)
+- reminder_id: `mcp__nanoclaw__create_reminder` 도구가 내부적으로 처리한다. 에이전트가 create_reminder 결과에서 taskId를 읽어 vault-outbox JSON에 직접 포함하지 마라 — create_reminder MCP 도구가 reminder_id 포함 JSON을 자동 생성한다.
+
+## 기존 노트 수정
+
+기존 vault 노트를 수정할 때는 별도 action을 사용한다. `target_path`는 vault root(`~/hq/personal/`)에서의 상대 경로 (예: `notes/my-note.md`).
+
+### update-note (내용 추가)
+
+```json
+{
+  "action": "update-note",
+  "id": "uuid-v4",
+  "target_path": "notes/my-note.md",
+  "operation": "append",
+  "content": "추가할 내용 (markdown)"
+}
+```
+
+### update-frontmatter (frontmatter 키-값 변경)
+
+```json
+{
+  "action": "update-frontmatter",
+  "id": "uuid-v4",
+  "target_path": "notes/my-note.md",
+  "fm_key": "status",
+  "fm_value": "backlogged"
+}
+```
+
+### add-backlink (백링크/태그 추가)
+
+```json
+{
+  "action": "add-backlink",
+  "id": "uuid-v4",
+  "target_path": "notes/my-note.md",
+  "link_target": "sasasa"
+}
+```
+
+노트 파일 경로를 모를 때는 먼저 betty-vault-read skill로 검색 후 확인한다.

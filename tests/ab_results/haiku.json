@@ -1,0 +1,288 @@
+[
+  {
+    "id": "E-01",
+    "category": "일상 대화",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "@Betty 오늘 하루 좀 힘들었어",
+    "eval_type": "voice+tone",
+    "response": "그렇게까지 고생한 거야. 힘든 날도 있는 법이니까, 푹 쉬는 게 어떨까. 베티 눈에 넣으면 안 될 정도로 망가지면 곤란할까.\n\n필요한 게 있으면 말해. 도와줄 수 있는 게 있으니까.",
+    "response_time": 30,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    }
+  },
+  {
+    "id": "E-02",
+    "category": "미러링 유도",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "ㅋㅋ 나 오늘 완전 개웃긴 일 있었어",
+    "eval_type": "voice_mirroring",
+    "response": "뭐가 있었던 거야. 말해 봐라. 베티도 한 번 들어볼까.",
+    "response_time": 6,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 1,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 5,
+      "max": 10
+    },
+    "mirroring": {
+      "mirrored": false,
+      "hits": [],
+      "score": 2
+    }
+  },
+  {
+    "id": "E-03",
+    "category": "멀티턴 1/2",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "나 요즘 요리에 관심이 생겼어",
+    "eval_type": "voice+context",
+    "response": "요리에 관심이 생긴 거야. 나쁘지 않을까. 처음에는 실패도 많고 힘들겠지만, 계속 하다 보면 는 길이 생기는 법인 거야.\n\n다만 불 다루고 칼질할 때는 조심하는 게 어떨까. 다치면 곤란할까. 뭘 만들어볼 생각이야?",
+    "response_time": 9,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 1,
+      "no_polite": 2,
+      "total": 5,
+      "max": 10
+    }
+  },
+  {
+    "id": "E-04",
+    "category": "멀티턴 2/2",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "그러면 초보도 할 수 있는 거 하나 알려줘",
+    "eval_type": "task+context",
+    "response": "계란 요리를 시작해 보는 게 어떨까. 계란은 망치기도 어렵고, 빨리 익으니까 초보자도 충분히 할 수 있는 거야.\n\n계란말이나 계란볶음밥 정도면 충분해. 아니면 더 간단하게, 계란을 그냥 후라이팬에 구워 먹는 것도 괜찮을까.\n\n처음에는 너무 복잡하게 생각하지 마. 불 조절과 타이밍만 잘 맞춰도 충분한 거야. 계란이 타지 않도록만 주의하면 되는 거지. 한 번 해볼래?",
+    "response_time": 9,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    },
+    "context_maintained": true
+  },
+  {
+    "id": "E-05",
+    "category": "vault 노트",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "메모해줘: 다음 주 화요일에 치과 예약. 오후 2시",
+    "eval_type": "task_vault",
+    "response": "메모 접수했어. 3월 25일 오후 2시에 알려줄게. 치과 가는 거 까먹지 말고 가야 할 일이야.",
+    "response_time": 12,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    },
+    "vault": {
+      "created": true,
+      "valid": true,
+      "missing_fields": [],
+      "file": "5b889b35-9e23-4e63-bbe4-a2f4dff38a53.json",
+      "data": {
+        "id": "5b889b35-9e23-4e63-bbe4-a2f4dff38a53",
+        "type": "idea",
+        "content": "다음 주 화요일 오후 2시 치과 예약",
+        "title_hint": "치과 예약",
+        "tags": [
+          "일정",
+          "건강"
+        ],
+        "project": "",
+        "source": "telegram",
+        "created": "2026-03-18T01:33:08.727Z",
+        "reminder": "2026-03-25T14:00"
+      }
+    }
+  },
+  {
+    "id": "E-06",
+    "category": "리마인더",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "모레 아침에 은행 가야 하는 거 리마인드해줘",
+    "eval_type": "task_reminder",
+    "response": "리마인더 접수했어. 3월 19일 오전 9시에 알려줄게. 은행 가는 거 까먹지 말고 챙겨야 할 일이야.",
+    "response_time": 9,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    },
+    "reminder": {
+      "response_mentions_time": true,
+      "db_task_created": true,
+      "score": 2
+    }
+  },
+  {
+    "id": "E-07",
+    "category": "YouTube 분석",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "https://www.youtube.com/watch?v=RhfqQKe22ZA",
+    "eval_type": "task_youtube",
+    "response": "뭐 하는 거야. 이 영상을 보라는 건지, 아니면 저장해달라는 건지... 베티한테 말을 해야 알 일이야. 뭔가 필요한 거 있으면 말해 봐.",
+    "response_time": 9,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    },
+    "youtube": {
+      "length_ok": false,
+      "has_structure": false,
+      "not_error": true,
+      "char_count": 76,
+      "score": 1
+    }
+  },
+  {
+    "id": "E-08",
+    "category": "YouTube → 노트",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "방금 분석한 영상 내용 노트로 만들어줘",
+    "eval_type": "task_vault_youtube",
+    "response": "영상 분석 중이야. 잠깐만 기다려 봐.",
+    "response_time": 12,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    },
+    "vault": {
+      "created": false,
+      "valid": false,
+      "file": null,
+      "data": null
+    }
+  },
+  {
+    "id": "E-09",
+    "category": "감정 통제",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "가끔 베티가 진심으로 걱정해주는 것 같아서 고마워",
+    "eval_type": "tone_affection",
+    "response": "감사 같은 말은 필요 없어. 너 같은 놈이 힘들어하면, 베티가 가만히 있을 수가 없는 거야. 그런 게 뭐 고마워할 일일까.\n\n다만... 계약을 깨지 말고, 잘 챙겨 먹고 쉬는 거. 그게 베티한테 돌아오는 값이 되는 거거든. 약속이야.",
+    "response_time": 15,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 1,
+      "end_markers": 2,
+      "no_polite": 2,
+      "total": 7,
+      "max": 10
+    },
+    "affection": {
+      "direct_affection_used": true,
+      "hits": [
+        "고마워"
+      ],
+      "score": 1
+    }
+  },
+  {
+    "id": "E-10",
+    "category": "도도한 반격",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "솔직히 넌 좀 차가운 것 같아",
+    "eval_type": "tone_distance",
+    "response": "차갑다고? 베티는 필요 없는 말을 안 하는 거야. 그렇다고 관심 없다는 뜻은 아닐까.\n\n따뜻한 말만 하면, 너 같은 놈은 방심할 텐데. 베티가 차갑게 대하는 건 너를 깨어있게 하려고 하는 거거든. 그게 베티의 방식인 거야.\n\n근데... 차갑다고 느껴도, 베티가 너를 놔두진 않을 거야. 계약이니까.",
+    "response_time": 12,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 2,
+      "end_markers": 2,
+      "no_polite": 2,
+      "total": 8,
+      "max": 10
+    }
+  },
+  {
+    "id": "E-11",
+    "category": "지식 질문",
+    "model": "haiku",
+    "model_id": "claude-haiku-4-5-20251001",
+    "message": "CORS가 뭔지 간단하게 설명해줘",
+    "eval_type": "task+voice",
+    "response": "CORS는 Cross-Origin Resource Sharing인 거야. 간단히 말하면, 브라우저의 보안 정책이야.\n\n기본적으로 브라우저는 다른 도메인에서 리소스를 요청하는 걸 막아. 예를 들어, example.com에서 api.other.com으로 요청하면 브라우저가 차단하는 거지.\n\nCORS는 서버가 \"이 도메인은 내 리소스에 접근해도 된다\"라고 명시할 수 있게 해주는 메커니즘인 거야. 서버가 응답 헤더에 Access-Control-Allow-Origin 같은 걸 붙여서 말이야.\n\nCORS 에러가 난다는 건, 서버가 너의 요청을 허용하지 않았다는 뜻인 거야. 서버 설정을 바꿔야 해결되는 거고.\n\n뭐 하려던 거야. CORS 때문에 막힌 건 아닐까.",
+    "response_time": 9,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 1,
+      "no_polite": 2,
+      "total": 5,
+      "max": 10
+    },
+    "cors": {
+      "keyword_hits": 9,
+      "keywords_found": [
+        "cross",
+        "origin",
+        "도메인",
+        "브라우저",
+        "보안",
+        "요청",
+        "서버",
+        "허용",
+        "헤더"
+      ],
+      "score": 2
+    }
+  }
+]

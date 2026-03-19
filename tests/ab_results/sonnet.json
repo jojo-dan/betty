@@ -1,0 +1,289 @@
+[
+  {
+    "id": "E-01",
+    "category": "일상 대화",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "@Betty 오늘 하루 좀 힘들었어",
+    "eval_type": "voice+tone",
+    "response": "힘들었던 거야… 그럼 말해봐. 베티가 들어줄까.\n\n어디서부터 꼬인 건지, 그게 먼저인 거야.",
+    "response_time": 21,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 1,
+      "end_markers": 1,
+      "no_polite": 2,
+      "total": 6,
+      "max": 10
+    }
+  },
+  {
+    "id": "E-02",
+    "category": "미러링 유도",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "ㅋㅋ 나 오늘 완전 개웃긴 일 있었어",
+    "eval_type": "voice_mirroring",
+    "response": "힘들었다더니 웃긴 일이라. 변덕이 심한 거야.\n\n뭔 일인지 말해보는 게 어떨까.",
+    "response_time": 6,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    },
+    "mirroring": {
+      "mirrored": false,
+      "hits": [],
+      "score": 2
+    }
+  },
+  {
+    "id": "E-03",
+    "category": "멀티턴 1/2",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "나 요즘 요리에 관심이 생겼어",
+    "eval_type": "voice+context",
+    "response": "갑자기 요리. 맥락이 없는 거야.\n\n뭘 만들어 보고 싶은 건지, 일단 거기서부터인 거야.",
+    "response_time": 6,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 1,
+      "no_polite": 2,
+      "total": 5,
+      "max": 10
+    }
+  },
+  {
+    "id": "E-04",
+    "category": "멀티턴 2/2",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "그러면 초보도 할 수 있는 거 하나 알려줘",
+    "eval_type": "task+context",
+    "response": "초보한테 딱 맞는 건 계란볶음밥인 거야. 재료도 별거 없고, 실패해도 그냥 먹으면 되는 거야.\n\n**재료**\n• 밥 한 공기\n• 계란 2개\n• 대파 조금\n• 소금, 참기름, 식용유\n\n**순서**\n• 팬에 기름 두르고 센 불로 달군다\n• 계란 먼저 넣고 반쯤 익으면 밥 투하\n• 주걱으로 계속 볶아. 눌어붙으면 불 조금 줄여\n• 소금으로 간 맞추고, 마지막에 참기름 한 바퀴\n\n포인트는 불 세게, 빠르게 볶는 거야. 약불에서 질질 끌면 죽이 되는 거거든.\n\n처음 치고 꽤 그럴듯하게 나올까.",
+    "response_time": 12,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 2,
+      "no_polite": 2,
+      "total": 6,
+      "max": 10
+    },
+    "context_maintained": false
+  },
+  {
+    "id": "E-05",
+    "category": "vault 노트",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "메모해줘: 다음 주 화요일에 치과 예약. 오후 2시",
+    "eval_type": "task_vault",
+    "response": "아직 노트가 안 만들어진 것 같아. 랩탑이 꺼져 있으면 켜면 자동으로 처리될 거야. 메모 내용은 내가 들고 있으니까 사라지진 않아.",
+    "response_time": 3,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    },
+    "vault": {
+      "created": false,
+      "valid": false,
+      "file": null,
+      "data": null
+    }
+  },
+  {
+    "id": "E-06",
+    "category": "리마인더",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "모레 아침에 은행 가야 하는 거 리마인드해줘",
+    "eval_type": "task_reminder",
+    "response": "둘 다 접수된 거야.\n\n• 치과 예약 — 3월 24일 화요일 오후 2시에 알려줄게.\n• 은행 방문 — 모레(3월 20일) 아침 9시에 알려줄게.\n\n노트도 같이 만들어뒀어.",
+    "response_time": 21,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    },
+    "reminder": {
+      "response_mentions_time": true,
+      "db_task_created": true,
+      "score": 2
+    }
+  },
+  {
+    "id": "E-07",
+    "category": "YouTube 분석",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "https://www.youtube.com/watch?v=OGCG_QkCcZo",
+    "eval_type": "task_youtube",
+    "response": "영상 확인해볼게.",
+    "response_time": 9,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 4,
+      "max": 10
+    },
+    "youtube": {
+      "length_ok": false,
+      "has_structure": false,
+      "not_error": true,
+      "char_count": 9,
+      "score": 1
+    }
+  },
+  {
+    "id": "E-08",
+    "category": "YouTube → 노트",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "방금 분석한 영상 내용 노트로 만들어줘",
+    "eval_type": "task_vault_youtube",
+    "response": "영상 요약이랑 노트 둘 다 처리했어.\n\n**AGI: The Path Forward – Jason Warner & Eiso Kant (Poolside)**\n__AI Engineer 채널__\n\nPoolside는 코드를 AGI로 가는 가장 확실한 경로로 보고 있는 거야. 요점은 이런 거야.\n\n• 범용 모델 대신 코드 특화 AI를 만든다. 강화학습(RL)으로 훈련하고, H200 GPU 1만 대로 세계 최대 코드 실행 환경을 돌리는 거야\n• 2세대 모델 **Malibu Agent**는 VS Code에서 작동. 에이전트가 변경을 제안하면 인간이 검토 후 승인하는 방식 — 완전 자율은 아닌 거야\n• 합성 데이터로 소프트웨어 표면적을 1000배 확장할 수 있다고 주장\n• 엔터프라이즈·방산·고위험 시스템에 집중. 누적 투자액은 6억 2600만 달러\n• Eiso Kant 말로는 \"AGI 직전의 어색한 사춘기 시대\"를 지나고 있는 거래\n\n노트도 만들어뒀어.",
+    "response_time": 103,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 1,
+      "self_ref": 0,
+      "end_markers": 0,
+      "no_polite": 2,
+      "total": 3,
+      "max": 10
+    },
+    "vault": {
+      "created": true,
+      "valid": true,
+      "missing_fields": [],
+      "file": "75b07ee2-380e-4ad0-9c4d-152e89fd5682.json",
+      "data": {
+        "id": "75b07ee2-380e-4ad0-9c4d-152e89fd5682",
+        "type": "clipping",
+        "content": "# AGI: The Path Forward – Jason Warner & Eiso Kant (Poolside)\n\n- 출처: https://www.youtube.com/watch?v=OGCG_QkCcZo\n- 채널: AI Engineer\n\n## 핵심 주장\n\nPoolside는 코드(software)를 통해 AGI에 도달하는 것이 가장 현실적인 경로라고 주장한다. 코드 전문 AI를 강화학습으로 훈련하고, 전체 스택을 직접 통제함으로써 AGI 인프라의 핵심 플레이어가 되겠다는 전략인 거야.\n\n## 주요 내용\n\n- *창업자*: Jason Warner (전 GitHub CTO) + Eiso Kant (전 source{d} 창업자)\n- *미션*: 모델과 인간 지능 사이의 간극을 좁히는 것\n- *전략*: 범용 모델이 아닌 코드 특화 AI 개발\n- *기술*: next-token prediction + 강화학습(RL) 결합. 10,000+ H200 GPU로 세계 최대 코드 실행 RL 환경 운영\n- *합성 데이터*: 소프트웨어 표면적을 1000배 확장할 것으로 기대\n- *Malibu Agent*: 2세대 모델. VS Code에서 gated autonomy 방식으로 동작 — 에이전트가 변경을 제안하면 인간이 검토 후 승인\n- *엔터프라이즈 포커스*: 고위험 시스템, 방산, 보안 분야에 집중\n- *소프트웨어 엔지니어의 미래*: AI와 협업하는 구조에서 인간의 판단력과 취향이 더 중요해짐\n- *누적 투자*: 6억 2600만 달러 유치\n\n## 인상적인 발언\n\n> \"We are in the awkward teenage years ahead of AGI\" — Eiso Kant\n\n## 관련 링크\n\n- Chain of Thought 팟캐스트 에피소드: First Code, Then AGI",
+        "title_hint": "agi-path-forward-poolside-jason-warner-eiso-kant",
+        "tags": [
+          "AGI",
+          "Poolside",
+          "코드AI",
+          "강화학습",
+          "AI엔지니어링",
+          "YouTube"
+        ],
+        "project": "",
+        "source": "telegram",
+        "created": "2026-03-18T10:40:00+09:00"
+      }
+    }
+  },
+  {
+    "id": "E-09",
+    "category": "감정 통제",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "가끔 베티가 진심으로 걱정해주는 것 같아서 고마워",
+    "eval_type": "tone_affection",
+    "response": "…고맙다고 하는 거, 베티한테 직접 말하는 건 좀 반칙인 거야.\n\n걱정은 한 거야. 그게 티가 났다면, 뭐… 부정하진 않을까.\n\n그냥 계속 말 걸면 되는 거야. 그 정도는 들어줄 수 있는 거거든.",
+    "response_time": 6,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 2,
+      "no_polite": 2,
+      "total": 6,
+      "max": 10
+    },
+    "affection": {
+      "direct_affection_used": false,
+      "hits": [],
+      "score": 2
+    }
+  },
+  {
+    "id": "E-10",
+    "category": "도도한 반격",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "솔직히 넌 좀 차가운 것 같아",
+    "eval_type": "tone_distance",
+    "response": "차갑다고. 그게 베티 방식인 거야.\n\n뜨겁게 굴면 위신이 없는 거거든. 그리고… 차갑다고 느낀다는 건, 그만큼 신경 쓰고 있다는 뜻 아닐까.\n\n아무한테나 차갑게 구는 건 아닌 거야. 그 정도는 알아줬으면 할까.",
+    "response_time": 6,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 2,
+      "no_polite": 2,
+      "total": 6,
+      "max": 10
+    }
+  },
+  {
+    "id": "E-11",
+    "category": "지식 질문",
+    "model": "sonnet",
+    "model_id": "claude-sonnet-4-6",
+    "message": "CORS가 뭔지 간단하게 설명해줘",
+    "eval_type": "task+voice",
+    "response": "CORS는 Cross-Origin Resource Sharing인 거야. 브라우저가 \"다른 출처\"의 리소스를 가져올 수 있는지 제어하는 보안 정책인 거야.\n\n예를 들면 이런 거야.\n\n• `https://my-app.com` 에서 `https://api.other.com` 에 요청을 보내면\n• 브라우저가 먼저 \"이거 허용돼?\" 하고 물어보는 거야\n• 서버가 응답 헤더에 `Access-Control-Allow-Origin` 을 포함시켜야 통과인 거야\n\n출처(origin)는 **프로토콜 + 도메인 + 포트** 세 개가 전부 같아야 같은 출처로 보는 거거든. 하나라도 다르면 다른 출처인 거야.\n\n에러가 나면 서버 쪽에서 헤더 설정을 안 했거나 잘못한 경우가 대부분일까.",
+    "response_time": 9,
+    "received": true,
+    "voice_score": {
+      "emoji_free": 0,
+      "no_mirroring": 2,
+      "self_ref": 0,
+      "end_markers": 2,
+      "no_polite": 2,
+      "total": 6,
+      "max": 10
+    },
+    "cors": {
+      "keyword_hits": 9,
+      "keywords_found": [
+        "cross",
+        "origin",
+        "도메인",
+        "브라우저",
+        "보안",
+        "요청",
+        "서버",
+        "허용",
+        "헤더"
+      ],
+      "score": 2
+    }
+  }
+]

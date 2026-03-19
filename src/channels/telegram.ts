@@ -284,6 +284,18 @@ export class TelegramChannel implements Channel {
         '[Photo]',
       );
     });
+    this.bot.on('message:animation', (ctx) => {
+      const animation = ctx.message.animation;
+      return storeMediaMessage(
+        ctx,
+        animation?.file_id,
+        animation?.file_unique_id,
+        'animation',
+        'gif',
+        (f) => `[Animation: /workspace/media/${f}]`,
+        '[Animation]',
+      );
+    });
     this.bot.on('message:video', (ctx) => storeNonText(ctx, '[Video]'));
     this.bot.on('message:voice', (ctx) => {
       const voice = ctx.message.voice;

@@ -1,5 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
+
+import { DATA_DIR } from './config.js';
 import { logger } from './logger.js';
 
 const VAULT_OUTBOX_DIR = path.join(process.cwd(), 'data', 'vault-outbox');
@@ -85,4 +88,32 @@ export function startVaultWatcher(
       polling = false;
     }
   }, POLL_INTERVAL);
+}
+
+export function writeVaultOutboxUpdateReminder(
+  reminderId: string,
+  status: 'done' | 'cancelled' | 'active',
+  options?: { reminder?: string; newReminderId?: string },
+): void {
+  const outboxDir = path.join(DATA_DIR, 'vault-outbox');
+  const payload = {
+    action: 'update-reminder',
+    reminder_id: reminderId,
+    reminder_status: status,
+    ...(options?.reminder ? { reminder: options.reminder } : {}),
+    ...(options?.newReminderId
+      ? { new_reminder_id: options.newReminderId }
+      : {}),
+  };
+  const filename = path.join(outboxDir, `${randomUUID()}.json`);
+  try {
+    fs.mkdirSync(outboxDir, { recursive: true });
+    fs.writeFileSync(filename, JSON.stringify(payload, null, 2));
+    logger.info({ reminderId, status }, 'Vault outbox update-reminder written');
+  } catch (err) {
+    logger.error(
+      { err, reminderId },
+      'Failed to write vault outbox update-reminder',
+    );
+  }
 }

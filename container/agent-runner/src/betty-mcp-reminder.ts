@@ -88,6 +88,7 @@ REMINDER DATE: YYYY-MM-DD format matching the schedule date.`,
           source: 'telegram',
           created: now,
           reminder: args.reminder_date,
+          reminder_id: taskId,
         };
         writeFileAtomic(vaultOutboxPath, vaultData);
 

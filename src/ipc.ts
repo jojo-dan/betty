@@ -6,6 +6,7 @@ import { CronExpressionParser } from 'cron-parser';
 import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
 import { AvailableGroup } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
+import { writeVaultOutboxUpdateReminder } from './betty-vault.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
@@ -318,6 +319,7 @@ export async function processTaskIpc(
             { taskId: data.taskId, sourceGroup },
             'Task cancelled via IPC',
           );
+          writeVaultOutboxUpdateReminder(data.taskId, 'cancelled');
         } else {
           logger.warn(
             { taskId: data.taskId, sourceGroup },
@@ -388,6 +390,11 @@ export async function processTaskIpc(
           { taskId: data.taskId, sourceGroup, updates },
           'Task updated via IPC',
         );
+        if (data.schedule_value) {
+          writeVaultOutboxUpdateReminder(data.taskId, 'active', {
+            reminder: data.schedule_value,
+          });
+        }
       }
       break;
 
