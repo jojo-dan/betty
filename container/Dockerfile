@@ -30,6 +30,12 @@ RUN apt-get update && apt-get install -y \
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
     chmod +x /usr/local/bin/yt-dlp
 
+# Install python3 + youtube-transcript-api for YouTube subtitle extraction (betty-youtube skill)
+# youtube-transcript-api supports WebshareProxyConfig for residential proxy bypass
+RUN apt-get update && apt-get install -y python3 python3-pip && \
+    pip3 install --break-system-packages "youtube-transcript-api>=1.2.4" && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install ffmpeg for audio format conversion (betty-voice skill)
 RUN apt-get update && apt-get install -y ffmpeg && \
     rm -rf /var/lib/apt/lists/*
