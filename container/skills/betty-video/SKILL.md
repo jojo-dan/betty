@@ -40,7 +40,7 @@ echo "$RESULT" | python3 -c "import sys,json; r=json.load(sys.stdin); print(r['c
 
 ## Fallback
 
-`GEMINI_API_KEY` 미설정이거나 Gemini 호출 실패 시:
+`GEMINI_API_KEY` 또는 `GEMINI_BASE_URL` 미설정이거나 Gemini 호출 실패 시:
 - 베아트리스 톤으로 "영상을 분석할 수 없었어... 잠시 후 다시 보내보면 되는 거야." 응답
 
 ## 응답 규칙
