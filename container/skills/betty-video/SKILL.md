@@ -29,7 +29,7 @@ req = {
 with open('/tmp/gemini-req.json', 'w') as f:
     json.dump(req, f)
 "
-RESULT=$(curl -s -X POST "${GEMINI_BASE_URL}/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}" \
+RESULT=$(curl -s -X POST "${GEMINI_BASE_URL}/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}" \
   -H "Content-Type: application/json" -d @/tmp/gemini-req.json)
 echo "$RESULT" | python3 -c "import sys,json; r=json.load(sys.stdin); print(r['candidates'][0]['content']['parts'][0]['text'])"
 ```

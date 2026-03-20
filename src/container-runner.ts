@@ -297,7 +297,10 @@ function buildContainerArgs(
     args.push('-e', `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}`);
   }
   if (process.env.GEMINI_BASE_URL) {
-    args.push('-e', `GEMINI_BASE_URL=${process.env.GEMINI_BASE_URL}`);
+    const geminiUrl = process.env.GEMINI_BASE_URL
+      .replace('127.0.0.1', CONTAINER_HOST_GATEWAY)
+      .replace('localhost', CONTAINER_HOST_GATEWAY);
+    args.push('-e', `GEMINI_BASE_URL=${geminiUrl}`);
   }
 
   // Runtime-specific args for host gateway resolution
