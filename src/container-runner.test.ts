@@ -86,7 +86,7 @@ vi.mock('child_process', async () => {
   };
 });
 
-import { runContainerAgent, ContainerOutput } from './container-runner.js';
+import { runContainerAgent, resolveHostUrl, ContainerOutput } from './container-runner.js';
 import type { RegisteredGroup } from './types.js';
 
 const testGroup: RegisteredGroup = {
@@ -206,5 +206,33 @@ describe('container-runner timeout behavior', () => {
     const result = await resultPromise;
     expect(result.status).toBe('success');
     expect(result.newSessionId).toBe('session-456');
+  });
+});
+
+describe('resolveHostUrl', () => {
+  it('replaces 127.0.0.1 with host.docker.internal', () => {
+    expect(resolveHostUrl('http://127.0.0.1:8080/v1')).toBe(
+      'http://host.docker.internal:8080/v1',
+    );
+  });
+
+  it('replaces localhost with host.docker.internal', () => {
+    expect(resolveHostUrl('http://localhost:9000/api')).toBe(
+      'http://host.docker.internal:9000/api',
+    );
+  });
+
+  it('leaves external URLs unchanged', () => {
+    expect(resolveHostUrl('https://api.example.com/v1')).toBe(
+      'https://api.example.com/v1',
+    );
+  });
+
+  it('returns null unchanged', () => {
+    expect(resolveHostUrl(null)).toBeNull();
+  });
+
+  it('returns undefined unchanged', () => {
+    expect(resolveHostUrl(undefined)).toBeUndefined();
   });
 });

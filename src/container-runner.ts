@@ -33,6 +33,18 @@ import { RegisteredGroup } from './types.js';
 const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
 const OUTPUT_END_MARKER = '---NANOCLAW_OUTPUT_END---';
 
+/**
+ * Rewrite 127.0.0.1 / localhost in a URL to host.docker.internal so
+ * containers can reach services running on the host.  External URLs are
+ * returned unchanged.  null / undefined values are returned as-is.
+ */
+export function resolveHostUrl(url: string | null | undefined): string | null | undefined {
+  if (!url) return url;
+  return url
+    .replace('127.0.0.1', CONTAINER_HOST_GATEWAY)
+    .replace('localhost', CONTAINER_HOST_GATEWAY);
+}
+
 export interface ContainerInput {
   prompt: string;
   sessionId?: string;
@@ -297,10 +309,7 @@ function buildContainerArgs(
     args.push('-e', `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}`);
   }
   if (process.env.GEMINI_BASE_URL) {
-    const geminiUrl = process.env.GEMINI_BASE_URL
-      .replace('127.0.0.1', CONTAINER_HOST_GATEWAY)
-      .replace('localhost', CONTAINER_HOST_GATEWAY);
-    args.push('-e', `GEMINI_BASE_URL=${geminiUrl}`);
+    args.push('-e', `GEMINI_BASE_URL=${resolveHostUrl(process.env.GEMINI_BASE_URL)}`);
   }
 
   // Runtime-specific args for host gateway resolution
