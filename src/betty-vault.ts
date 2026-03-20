@@ -66,8 +66,28 @@ export function startVaultWatcher(
           // 완료 처리 — delete 먼저 (async 중복 방지)
           tracked.delete(uuid);
           delayNotified.delete(uuid);
-          await sendMessage(mainJid, '노트 만들어뒀어. 볼트에서 확인해봐.');
-          logger.info({ uuid }, 'Vault note completed');
+          // .done 파일 내용으로 action 유형 판별
+          let action = '';
+          try {
+            action = fs.readFileSync(doneFile, 'utf-8').trim();
+          } catch {
+            // 읽기 실패 — 빈 문자열로 처리 (레거시 동작)
+          }
+          if (action === 'create' || action === '') {
+            await sendMessage(
+              mainJid,
+              '노트 만들어뒀으니 확인해보면 되는 거야.',
+            );
+            logger.info(
+              { uuid, action },
+              'Vault note completed — message sent',
+            );
+          } else {
+            logger.info(
+              { uuid, action },
+              'Vault note completed — silent (non-create action)',
+            );
+          }
           continue;
         }
 
@@ -77,7 +97,7 @@ export function startVaultWatcher(
           delayNotified.add(uuid);
           await sendMessage(
             mainJid,
-            '아직 노트가 안 만들어진 것 같아. 랩탑이 꺼져 있으면 켜면 자동으로 처리될 거야. 메모 내용은 내가 들고 있으니까 사라지진 않아.',
+            '아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.',
           );
           logger.info({ uuid }, 'Vault note delay notification sent');
         }
