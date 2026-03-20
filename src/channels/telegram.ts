@@ -291,8 +291,8 @@ export class TelegramChannel implements Channel {
         animation?.file_id,
         animation?.file_unique_id,
         'animation',
-        'gif',
-        (f) => `[Animation: /workspace/media/${f}]`,
+        'mp4',
+        (f) => `[Video: /workspace/media/${f}]`,
         '[Animation]',
       );
     });
