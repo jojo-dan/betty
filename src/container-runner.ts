@@ -292,6 +292,14 @@ function buildContainerArgs(
     args.push('-e', `WEBSHARE_PROXY_URL=${process.env.WEBSHARE_PROXY_URL}`);
   }
 
+  // Pass Gemini API credentials for skills that use video analysis (betty-video skill)
+  if (process.env.GEMINI_API_KEY) {
+    args.push('-e', `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}`);
+  }
+  if (process.env.GEMINI_BASE_URL) {
+    args.push('-e', `GEMINI_BASE_URL=${process.env.GEMINI_BASE_URL}`);
+  }
+
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 
