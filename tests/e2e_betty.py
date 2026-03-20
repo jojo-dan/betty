@@ -6,15 +6,21 @@ Usage:
   source tests/.venv/bin/activate
   python tests/e2e_betty.py
 
+  # Skip teardown (DB cleanup + vault cleanup):
+  python tests/e2e_betty.py --no-cleanup
+
 First run requires interactive Telegram auth (phone + code).
 """
 
+import argparse
 import asyncio
+import json
 import os
 import re
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 
 from dotenv import dotenv_values
@@ -27,6 +33,7 @@ API_HASH = env["TELETHON_API_HASH"]
 BOT_USERNAME = "re_betty_bot"
 SESSION_FILE = str(Path(__file__).parent / "telethon_session")
 DB_PATH = "/opt/betty/store/messages.db"
+VAULT_OUTBOX = "/opt/betty/data/vault-outbox"
 TIMEOUT = 300  # seconds to wait for bot response (YouTube analysis can take 4+ minutes)
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -59,11 +66,81 @@ def reset_betty_session():
     print("  ✅ 세션 초기화 완료\n")
 
 
-async def main():
+def get_once_task_ids():
+    """Return the set of active once-type task IDs currently in scheduled_tasks."""
+    try:
+        out = subprocess.run(
+            ["sqlite3", DB_PATH, "SELECT id FROM scheduled_tasks WHERE schedule_type='once' AND status='active';"],
+            capture_output=True, text=True, timeout=5,
+        )
+        ids = set(line.strip() for line in out.stdout.splitlines() if line.strip())
+        return ids
+    except Exception:
+        return set()
+
+
+def teardown(pre_task_ids, vault_note_paths, no_cleanup=False):
+    """Clean up test artifacts: VPS DB tasks + vault notes via cleanup manifest."""
+    if no_cleanup:
+        print("\n--- teardown 스킵 (--no-cleanup) ---")
+        return
+
+    print("\n--- teardown: 테스트 산출물 정리 ---")
+
+    # 2a. VPS DB: delete once tasks created during this test run
+    post_task_ids = get_once_task_ids()
+    new_task_ids = post_task_ids - pre_task_ids
+    deleted_tasks = 0
+    if new_task_ids:
+        for task_id in new_task_ids:
+            try:
+                subprocess.run(
+                    ["sqlite3", DB_PATH, f"DELETE FROM scheduled_tasks WHERE id='{task_id}';"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                deleted_tasks += 1
+            except Exception as e:
+                print(f"  ⚠️ 태스크 삭제 실패 (id={task_id}): {e}")
+        print(f"  ✅ DB: {deleted_tasks}개 once 태스크 삭제 ({', '.join(new_task_ids)})")
+    else:
+        print(f"  DB: 정리할 새 once 태스크 없음")
+
+    # 2b. vault-outbox cleanup manifest (delete-notes action)
+    processed_paths = 0
+    if vault_note_paths:
+        manifest_id = str(uuid.uuid4())
+        manifest = {
+            "action": "delete-notes",
+            "id": manifest_id,
+            "paths": list(vault_note_paths),
+        }
+        manifest_file = f"{VAULT_OUTBOX}/{manifest_id}.json"
+        try:
+            subprocess.run(
+                ["bash", "-c", f"echo '{json.dumps(manifest)}' > '{manifest_file}'"],
+                capture_output=True, text=True, timeout=5,
+            )
+            processed_paths = len(vault_note_paths)
+            print(f"  ✅ vault-outbox: cleanup manifest 작성 ({processed_paths}개 노트) → {manifest_file}")
+        except Exception as e:
+            print(f"  ⚠️ cleanup manifest 작성 실패: {e}")
+    else:
+        print(f"  vault: 정리할 테스트 노트 없음")
+
+    print(f"  요약: {deleted_tasks}개 DB 태스크 삭제, {processed_paths}개 vault 노트 cleanup manifest 작성")
+
+
+async def main(no_cleanup=False):
     client = TelegramClient(SESSION_FILE, API_ID, API_HASH)
     await client.start()
 
     print(f"Logged in as: {(await client.get_me()).first_name}")
+
+    # Collect pre-test once task IDs for teardown delta calculation
+    pre_task_ids = get_once_task_ids()
+
+    # vault notes created during this test run (populated per-scenario if applicable)
+    vault_note_paths = []
 
     # Reset session before tests for isolation (prevents false positives in S-2 multi-turn)
     reset_betty_session()
@@ -253,8 +330,19 @@ async def main():
     passed = sum(1 for _, ok in results if ok)
     print(f"\n  {passed}/{len(results)} 통과")
 
+    # Teardown: clean up test artifacts
+    teardown(pre_task_ids, vault_note_paths, no_cleanup=no_cleanup)
+
     await client.disconnect()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description="Betty E2E Test")
+    parser.add_argument(
+        "--no-cleanup",
+        action="store_true",
+        default=False,
+        help="Skip teardown (DB task cleanup + vault cleanup manifest)",
+    )
+    args = parser.parse_args()
+    asyncio.run(main(no_cleanup=args.no_cleanup))
