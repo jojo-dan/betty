@@ -34,6 +34,7 @@ BOT_USERNAME = "re_betty_bot"
 SESSION_FILE = str(Path(__file__).parent / "telethon_session")
 DB_PATH = "/opt/betty/store/messages.db"
 VAULT_OUTBOX = "/opt/betty/data/vault-outbox"
+VAULT_OUTBOX_PROCESSED = "/opt/betty/data/vault-outbox/processed"
 TIMEOUT = 300  # seconds to wait for bot response (YouTube analysis can take 4+ minutes)
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -64,6 +65,66 @@ def reset_betty_session():
     # Wait for betty to fully start
     time.sleep(5)
     print("  ✅ 세션 초기화 완료\n")
+
+
+def get_processed_done_basenames():
+    """Return set of UUID basenames from .done files in the processed directory.
+    Reads directly from filesystem (test runs on VPS where processed/ is local)."""
+    try:
+        import glob
+        done_files = glob.glob(f"{VAULT_OUTBOX_PROCESSED}/*.done")
+        return set(os.path.basename(f).replace('.done', '') for f in done_files)
+    except Exception:
+        return set()
+
+
+TYPE_FOLDER_MAP = {"idea": "notes", "clipping": "clippings", "guide": "notes", "learning": "notes", "journal": "daily"}
+
+
+def generate_filename_py(raw, note_type="idea"):
+    """Reproduce vault-watcher.sh generate_filename() logic in Python."""
+    name = re.sub(r'^#+ *', '', raw)
+    name = name.lower()
+    name = re.sub(r'[^a-z0-9 -]', '', name)
+    name = re.sub(r' +', ' ', name).strip()
+    name = name.replace(' ', '-')
+    name = re.sub(r'-+', '-', name)
+    name = name.strip('-')
+    name = name[:60]
+    if not name:
+        from datetime import datetime
+        name = f"{note_type}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    return name
+
+
+def resolve_vault_note_paths(new_done_uuids):
+    """Trace back vault note paths from UUID list by reading .done/.json files.
+    Reads directly from filesystem (test runs on VPS where processed/ is local)."""
+    paths = []
+    for uuid_str in new_done_uuids:
+        try:
+            with open(f"{VAULT_OUTBOX_PROCESSED}/{uuid_str}.done") as f:
+                action = f.read().strip()
+            if action != "create":
+                continue
+
+            with open(f"{VAULT_OUTBOX_PROCESSED}/{uuid_str}.json") as f:
+                data = json.load(f)
+            title_hint = data.get("title_hint", "")
+            note_type = data.get("type", "idea")
+
+            if not title_hint:
+                continue
+
+            folder = TYPE_FOLDER_MAP.get(note_type, "notes")
+            note_name = generate_filename_py(title_hint, note_type)
+
+            paths.append(f"{folder}/{note_name}.md")
+            paths.append(f"{folder}/{note_name}-{uuid_str[:8]}.md")
+            print(f"  [teardown] create note detected: {uuid_str} → {folder}/{note_name}.md")
+        except Exception as e:
+            print(f"  [teardown] ⚠️ resolve 실패 ({uuid_str}): {e}")
+    return paths
 
 
 def get_once_task_ids():
@@ -138,6 +199,7 @@ async def main(no_cleanup=False):
 
     # Collect pre-test once task IDs for teardown delta calculation
     pre_task_ids = get_once_task_ids()
+    pre_processed_dones = get_processed_done_basenames()
 
     # vault notes created during this test run (populated per-scenario if applicable)
     vault_note_paths = []
@@ -331,6 +393,26 @@ async def main(no_cleanup=False):
     print(f"\n  {passed}/{len(results)} 통과")
 
     # Teardown: clean up test artifacts
+    # vault 파이프라인 완료 대기 (비동기 — agent container → vault-outbox → vault-watcher → processed/)
+    # agent container가 vault-outbox JSON을 쓰기까지 수 분 소요될 수 있음
+    print("\n--- vault 파이프라인 대기 ---")
+    for attempt in range(36):  # 36 * 5s = 180s max
+        post_processed_dones = get_processed_done_basenames()
+        if len(post_processed_dones) > len(pre_processed_dones):
+            print(f"  ✅ 새 processed 파일 감지 ({(attempt + 1) * 5}초 대기)")
+            break
+        time.sleep(5)
+        if (attempt + 1) % 6 == 0:
+            print(f"  대기 중... ({(attempt + 1) * 5}초)")
+    else:
+        print("  ⚠️ vault 파이프라인 대기 타임아웃 (180초)")
+        post_processed_dones = get_processed_done_basenames()
+
+    # vault 노트 역추적
+    new_done_uuids = post_processed_dones - pre_processed_dones
+    if new_done_uuids:
+        vault_note_paths = resolve_vault_note_paths(new_done_uuids)
+
     teardown(pre_task_ids, vault_note_paths, no_cleanup=no_cleanup)
 
     await client.disconnect()
