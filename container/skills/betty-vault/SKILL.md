@@ -35,9 +35,22 @@ trigger: 사용자가 "기록해줘", "메모해줘", "노트로", URL 공유, "
       "source_path": "/workspace/media/photo_AgACBgIAAxk.jpg",
       "filename": "photo_AgACBgIAAxk.jpg"
     }
-  ]
+  ],
+  "source_material": {
+    "name": "자료명",
+    "type": "book | person | podcast | lecture | video | article"
+  }
 }
 ```
+
+## source_material 추출 규칙
+
+대화 맥락에서 출처 자료가 명확하면 `source_material` 필드를 포함한다. 불분명하면 필드를 생략한다.
+
+- type 목록: `book` / `person` / `podcast` / `lecture` / `video` / `article`
+- 책 언급 → `book`: "한국인의 탄생 읽다가 나온 건데, 조선 후기 민족 정체성에 대해 조사하고 노트 만들어줘" → `{"name": "한국인의 탄생", "type": "book"}`
+- 인물 언급 → `person`: "이동진 평론가 영상에서 나온 건데, 봉준호 연출 스타일에 대해 정리해줘" → `{"name": "이동진", "type": "person"}`
+- 출처 불분명 시 → `source_material` 필드 생략
 
 ## type 결정 규칙
 
@@ -86,7 +99,7 @@ mcp__nanoclaw__create_reminder({
 
 | 파라미터 | 필수 | 설명 |
 |---------|------|------|
-| `prompt` | O | 텔레그램으로 전송할 알림 텍스트 |
+| `prompt` | O | 텔레그램으로 전송할 알림 텍스트. **절대 날짜/시각 사용 필수, 상대적 표현 금지.** O: `"3월 22일 오전 9시에 알려드릴게요."` X: `"내일 아침에 알려드릴게요."` |
 | `content` | O | 볼트 노트 본문 (markdown) |
 | `schedule_value` | O | 로컬 시간 (KST). **`+09:00`이나 `Z` suffix를 절대 붙이지 마라** |
 | `reminder_date` | O | 볼트 노트 frontmatter용 날짜 (YYYY-MM-DD) |
@@ -94,6 +107,11 @@ mcp__nanoclaw__create_reminder({
 | `title_hint` | O | 영문 kebab-case 파일명 (필수). 한국어 내용을 의미 있는 영문으로 변환하여 제공 |
 | `tags` | X | 관련 태그 배열 |
 | `project` | X | 관련 프로젝트명 |
+
+> **⚠️ prompt 절대 날짜 규칙**
+> `prompt`(텔레그램 알림 텍스트)에는 반드시 절대 날짜/시각을 사용하라. "내일", "모레", "다음 주" 등 상대적 표현은 금지한다.
+> - O: `"3월 22일 오전 9시에 알려드릴게요."`
+> - X: `"내일 아침에 알려드릴게요."`
 
 ## 기본 시각 규칙
 

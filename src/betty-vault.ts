@@ -10,8 +10,8 @@ const PROCESSED_DIR = path.join(VAULT_OUTBOX_DIR, 'processed');
 const POLL_INTERVAL = 10_000; // 10초
 const DELAY_TIMEOUT = 5 * 60 * 1000; // 5분
 
-// 추적 중인 JSON 파일 (uuid → created timestamp)
-const tracked = new Map<string, number>();
+// 추적 중인 JSON 파일 (uuid → { createdAt, action })
+const tracked = new Map<string, { createdAt: number; action: string }>();
 // 지연 알림 발송 완료
 const delayNotified = new Set<string>();
 
@@ -42,24 +42,28 @@ export function startVaultWatcher(
       for (const file of files) {
         const uuid = file.replace('.json', '');
         if (!tracked.has(uuid)) {
-          // JSON의 created 필드를 읽거나, 현재 시각 사용
-          let created = Date.now();
+          // JSON의 created / action 필드를 읽거나, 기본값 사용
+          let createdAt = Date.now();
+          let action = '';
           try {
             const json = JSON.parse(
               fs.readFileSync(path.join(VAULT_OUTBOX_DIR, file), 'utf-8'),
             );
             if (json.created) {
-              created = new Date(json.created).getTime();
+              createdAt = new Date(json.created).getTime();
+            }
+            if (json.action) {
+              action = json.action;
             }
           } catch {
-            // JSON 파싱 실패 — 현재 시각 사용
+            // JSON 파싱 실패 — 기본값 사용
           }
-          tracked.set(uuid, created);
+          tracked.set(uuid, { createdAt, action });
         }
       }
 
       // 2. 추적 중인 항목 처리
-      for (const [uuid, createdAt] of tracked) {
+      for (const [uuid, { createdAt, action: trackedAction }] of tracked) {
         const doneFile = path.join(PROCESSED_DIR, `${uuid}.done`);
 
         if (fs.existsSync(doneFile)) {
@@ -95,11 +99,18 @@ export function startVaultWatcher(
         const elapsed = Date.now() - createdAt;
         if (elapsed > DELAY_TIMEOUT && !delayNotified.has(uuid)) {
           delayNotified.add(uuid);
-          await sendMessage(
-            mainJid,
-            '아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.',
-          );
-          logger.info({ uuid }, 'Vault note delay notification sent');
+          if (trackedAction === 'update-reminder') {
+            logger.info(
+              { uuid, action: trackedAction },
+              'Delay notification skipped — non-create action',
+            );
+          } else {
+            await sendMessage(
+              mainJid,
+              '아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.',
+            );
+            logger.info({ uuid }, 'Vault note delay notification sent');
+          }
         }
       }
     } catch (err) {
