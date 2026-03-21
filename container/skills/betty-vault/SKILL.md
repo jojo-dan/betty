@@ -304,6 +304,9 @@ EOF
 
 ### delete-notes
 
+> **⚠️ action 이름 주의**: 반드시 `"delete-notes"` (복수, s 포함)를 사용한다. `"delete-note"` (단수)는 인식되지 않는다.
+> **⚠️ 필드 이름 주의**: `target_path`가 아닌 `paths` 배열을 사용한다.
+
 ```json
 {
   "action": "delete-notes",
