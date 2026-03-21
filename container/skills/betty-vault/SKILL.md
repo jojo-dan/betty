@@ -206,6 +206,41 @@ vault-watcher.sh가 attachments를 읽고 VPS에서 로컬 `~/hq/personal/attach
 - reminder: 리마인더 날짜만 기록 (YYYY-MM-DD). 시각은 `mcp__nanoclaw__create_reminder`의 `schedule_value`에 포함 (로컬 시간, timezone suffix 없음)
 - reminder_id: `mcp__nanoclaw__create_reminder` 도구가 내부적으로 처리한다. 에이전트가 create_reminder 결과에서 taskId를 읽어 vault-outbox JSON에 직접 포함하지 마라 — create_reminder MCP 도구가 reminder_id 포함 JSON을 자동 생성한다.
 
+## JSON 파일 생성 방법
+
+vault-outbox JSON 파일은 반드시 **Write 도구**로 생성한다. Bash의 `echo >` 또는 `cat <<EOF` 사용을 금지한다 — 쉘 커맨드 치환(`$(uuidgen)` 등)이 실행되지 않고 문자열 그대로 삽입되어 jq 파싱에 실패한다.
+
+아웃박스 경로: `/workspace/extra/vault-outbox/`
+
+### 올바른 생성 절차
+
+1. **Bash로 UUID 생성** — 변수에 저장
+
+   ```
+   Bash: UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+   ```
+
+2. **Write 도구로 파일 생성** — `$UUID` 변수를 경로와 내용에 사용
+
+   ```
+   Write: /workspace/extra/vault-outbox/$UUID.json
+   내용: {"id": "$UUID", "action": "update-note", ...}
+   ```
+
+3. **Read 도구로 검증** — 파일 생성 후 내용을 Read로 재확인하여 `id` 필드가 실제 UUID 형식(`xxxxxxxx-xxxx-4xxx-...`)인지 확인한다.
+
+### 금지 패턴
+
+```bash
+# 금지: echo >
+echo '{"id": "'"$(uuidgen)"'", ...}' > /workspace/extra/vault-outbox/xxx.json
+
+# 금지: cat <<EOF heredoc
+cat <<EOF > /workspace/extra/vault-outbox/xxx.json
+{"id": "$(uuidgen)", ...}
+EOF
+```
+
 ## 기존 노트 수정
 
 기존 vault 노트를 수정할 때는 별도 action을 사용한다. `target_path`는 vault root(`~/hq/personal/`)에서의 상대 경로 (예: `notes/my-note.md`).
