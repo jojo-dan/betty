@@ -245,6 +245,15 @@ EOF
 
 기존 vault 노트를 수정할 때는 별도 action을 사용한다. `target_path`는 vault root(`~/hq/personal/`)에서의 상대 경로 (예: `notes/my-note.md`).
 
+### target_path 경로 변환 규칙
+
+컨테이너 내에서 vault 미러 경로(`/workspace/extra/vault/...`)를 인식하더라도, `target_path`에는 `/workspace/extra/vault/` 접두사를 제거한 상대 경로만 사용한다.
+
+- 변환 전: `/workspace/extra/vault/notes/my-note.md`
+- 변환 후: `target_path: "notes/my-note.md"`
+
+> **경고**: `target_path`에 `/workspace/...` 컨테이너 경로를 그대로 사용하면 vault-watcher.sh가 파일을 찾지 못한다.
+
 ### update-note (내용 추가)
 
 ```json
@@ -281,3 +290,42 @@ EOF
 ```
 
 노트 파일 경로를 모를 때는 먼저 betty-vault-read skill로 검색 후 확인한다.
+
+## 노트 삭제
+
+기존 vault 노트를 삭제할 때는 `delete-notes` action을 사용한다. `paths`는 vault root(`~/hq/personal/`)에서의 상대 경로 배열.
+
+### target_path 경로 변환 규칙
+
+컨테이너 내에서 vault 미러 경로(`/workspace/extra/vault/...`)를 인식하더라도, `paths` 항목에는 `/workspace/extra/vault/` 접두사를 제거한 상대 경로만 사용한다.
+
+- 변환 전: `/workspace/extra/vault/notes/my-note.md`
+- 변환 후: `"notes/my-note.md"`
+
+### delete-notes
+
+```json
+{
+  "action": "delete-notes",
+  "paths": ["notes/my-note.md"]
+}
+```
+
+- `paths` 배열에 삭제할 파일 경로를 나열한다 (복수 삭제 가능)
+- vault-watcher 안전장치: 아래 조건 중 하나라도 위반하면 해당 경로는 무시된다
+  1. 절대 경로 거부
+  2. `../` 경로 트래버설 거부
+  3. `.md` 확장자만 허용
+  4. `notes/`, `daily/`, `clippings/` 하위 경로만 허용
+  5. 심볼릭 링크 거부
+  6. 존재하지 않는 파일 거부
+
+### JSON 파일 생성 방법
+
+"JSON 파일 생성 방법" 섹션의 규칙을 동일하게 따른다. Bash로 UUID 생성 후 Write 도구로 파일 생성.
+
+```
+Bash: UUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+Write: /workspace/extra/vault-outbox/$UUID.json
+내용: {"action": "delete-notes", "paths": ["notes/my-note.md"]}
+```
