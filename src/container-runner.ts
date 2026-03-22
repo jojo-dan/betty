@@ -38,7 +38,9 @@ const OUTPUT_END_MARKER = '---NANOCLAW_OUTPUT_END---';
  * containers can reach services running on the host.  External URLs are
  * returned unchanged.  null / undefined values are returned as-is.
  */
-export function resolveHostUrl(url: string | null | undefined): string | null | undefined {
+export function resolveHostUrl(
+  url: string | null | undefined,
+): string | null | undefined {
   if (!url) return url;
   return url
     .replace('127.0.0.1', CONTAINER_HOST_GATEWAY)
@@ -255,6 +257,24 @@ function buildVolumeMounts(
     readonly: true,
   });
 
+  // Write OPENAI_API_KEY to a file so SKILL.md can read it via $(cat ...)
+  // The SDK Bash tool does not expose Docker -e env vars to the shell,
+  // so file-based injection is the reliable workaround.
+  if (process.env.OPENAI_API_KEY) {
+    const extraDir = path.join(DATA_DIR, 'sessions', group.folder, 'extra');
+    fs.mkdirSync(extraDir, { recursive: true });
+    const keyFile = path.join(extraDir, 'openai-key');
+    fs.writeFileSync(keyFile, process.env.OPENAI_API_KEY, { mode: 0o600 });
+    if (process.getuid?.() === 0) {
+      fs.chownSync(keyFile, 1000, 1000);
+    }
+    mounts.push({
+      hostPath: keyFile,
+      containerPath: '/workspace/extra/openai-key',
+      readonly: true,
+    });
+  }
+
   // Additional mounts validated against external allowlist (tamper-proof from containers)
   if (group.containerConfig?.additionalMounts) {
     const validatedMounts = validateAdditionalMounts(
@@ -309,7 +329,10 @@ function buildContainerArgs(
     args.push('-e', `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}`);
   }
   if (process.env.GEMINI_BASE_URL) {
-    args.push('-e', `GEMINI_BASE_URL=${resolveHostUrl(process.env.GEMINI_BASE_URL)}`);
+    args.push(
+      '-e',
+      `GEMINI_BASE_URL=${resolveHostUrl(process.env.GEMINI_BASE_URL)}`,
+    );
   }
 
   // Runtime-specific args for host gateway resolution
