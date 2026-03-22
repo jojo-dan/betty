@@ -63,6 +63,8 @@ export function startVaultWatcher(
       }
 
       // 2. 추적 중인 항목 처리
+      const pendingForNotify: string[] = [];
+
       for (const [uuid, { createdAt, action: trackedAction }] of tracked) {
         const doneFile = path.join(PROCESSED_DIR, `${uuid}.done`);
 
@@ -95,23 +97,29 @@ export function startVaultWatcher(
           continue;
         }
 
-        // 5분 경과 + 지연 알림 미발송
+        // 5분 경과 + 지연 알림 미발송 + update-reminder 제외
         const elapsed = Date.now() - createdAt;
-        if (elapsed > DELAY_TIMEOUT && !delayNotified.has(uuid)) {
+        if (elapsed > DELAY_TIMEOUT && !delayNotified.has(uuid) && trackedAction !== 'update-reminder') {
+          pendingForNotify.push(uuid);
+        } else if (elapsed > DELAY_TIMEOUT && !delayNotified.has(uuid) && trackedAction === 'update-reminder') {
           delayNotified.add(uuid);
-          if (trackedAction === 'update-reminder') {
-            logger.info(
-              { uuid, action: trackedAction },
-              'Delay notification skipped — non-create action',
-            );
-          } else {
-            await sendMessage(
-              mainJid,
-              '아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.',
-            );
-            logger.info({ uuid }, 'Vault note delay notification sent');
-          }
+          logger.info(
+            { uuid, action: trackedAction },
+            'Delay notification skipped — non-create action',
+          );
         }
+      }
+
+      // 지연 알림 배치 발송 (폴링 사이클당 최대 1회)
+      if (pendingForNotify.length > 0) {
+        pendingForNotify.forEach((u) => delayNotified.add(u));
+        const count = pendingForNotify.length;
+        const msg =
+          count === 1
+            ? '아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.'
+            : `노트 ${count}개가 아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.`;
+        await sendMessage(mainJid, msg);
+        logger.info({ uuids: pendingForNotify, count }, 'Vault note batch delay notification sent');
       }
     } catch (err) {
       logger.error({ err }, 'Vault watcher error');
