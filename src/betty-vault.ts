@@ -67,6 +67,7 @@ export function startVaultWatcher(
 
       // 2. 추적 중인 항목 처리
       const pendingForNotify: string[] = [];
+      const completedCreateUuids: string[] = [];
 
       for (const [uuid, { createdAt, action: trackedAction }] of tracked) {
         const doneFile = path.join(PROCESSED_DIR, `${uuid}.done`);
@@ -83,13 +84,10 @@ export function startVaultWatcher(
             // 읽기 실패 — 빈 문자열로 처리 (레거시 동작)
           }
           if (action === 'create' || action === '') {
-            await sendMessage(
-              mainJid,
-              '노트 만들어뒀으니 확인해보면 되는 거야.',
-            );
+            completedCreateUuids.push(uuid);
             logger.info(
               { uuid, action },
-              'Vault note completed — message sent',
+              'Vault note completed — queued for batch message',
             );
           } else {
             logger.info(
@@ -121,6 +119,20 @@ export function startVaultWatcher(
         }
       }
 
+      // 완료 알림 배치 발송 (폴링 사이클당 최대 1회)
+      if (completedCreateUuids.length > 0) {
+        const count = completedCreateUuids.length;
+        const msg =
+          count === 1
+            ? '노트 만들어뒀으니 확인해보면 되는 거야.'
+            : `노트 ${count}개 만들어뒀으니 확인해보면 되는 거야.`;
+        await sendMessage(mainJid, msg);
+        logger.info(
+          { uuids: completedCreateUuids, count },
+          'Vault note batch completed — message sent',
+        );
+      }
+
       // 지연 알림 배치 발송 (폴링 사이클당 최대 1회 + 5분 쿨다운)
       if (pendingForNotify.length > 0) {
         // delayNotified에 등록 (재알림 방지)
@@ -130,9 +142,10 @@ export function startVaultWatcher(
         const now = Date.now();
         if (now - lastBatchNotifyTime >= BATCH_COOLDOWN) {
           // 전체 미처리 개수 (이번 배치 + 이전에 이미 알림한 것 중 아직 미처리)
-          const totalPending = [...tracked.keys()].filter(
-            (u) => !delayNotified.has(u) || pendingForNotify.includes(u),
-          ).length || pendingForNotify.length;
+          const totalPending =
+            [...tracked.keys()].filter(
+              (u) => !delayNotified.has(u) || pendingForNotify.includes(u),
+            ).length || pendingForNotify.length;
           const count = totalPending;
           const msg =
             count === 1
@@ -146,7 +159,10 @@ export function startVaultWatcher(
           );
         } else {
           logger.info(
-            { uuids: pendingForNotify, cooldownRemaining: BATCH_COOLDOWN - (now - lastBatchNotifyTime) },
+            {
+              uuids: pendingForNotify,
+              cooldownRemaining: BATCH_COOLDOWN - (now - lastBatchNotifyTime),
+            },
             'Vault note delay notification suppressed — cooldown active',
           );
         }
