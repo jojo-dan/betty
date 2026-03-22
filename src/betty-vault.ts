@@ -14,6 +14,9 @@ const DELAY_TIMEOUT = 5 * 60 * 1000; // 5분
 const tracked = new Map<string, { createdAt: number; action: string }>();
 // 지연 알림 발송 완료
 const delayNotified = new Set<string>();
+// 배치 알림 쿨다운 (마지막 전송 시각)
+let lastBatchNotifyTime = 0;
+const BATCH_COOLDOWN = 5 * 60 * 1000; // 5분 쿨다운
 
 export function startVaultWatcher(
   sendMessage: (jid: string, text: string) => Promise<void>,
@@ -99,9 +102,17 @@ export function startVaultWatcher(
 
         // 5분 경과 + 지연 알림 미발송 + update-reminder 제외
         const elapsed = Date.now() - createdAt;
-        if (elapsed > DELAY_TIMEOUT && !delayNotified.has(uuid) && trackedAction !== 'update-reminder') {
+        if (
+          elapsed > DELAY_TIMEOUT &&
+          !delayNotified.has(uuid) &&
+          trackedAction !== 'update-reminder'
+        ) {
           pendingForNotify.push(uuid);
-        } else if (elapsed > DELAY_TIMEOUT && !delayNotified.has(uuid) && trackedAction === 'update-reminder') {
+        } else if (
+          elapsed > DELAY_TIMEOUT &&
+          !delayNotified.has(uuid) &&
+          trackedAction === 'update-reminder'
+        ) {
           delayNotified.add(uuid);
           logger.info(
             { uuid, action: trackedAction },
@@ -110,16 +121,35 @@ export function startVaultWatcher(
         }
       }
 
-      // 지연 알림 배치 발송 (폴링 사이클당 최대 1회)
+      // 지연 알림 배치 발송 (폴링 사이클당 최대 1회 + 5분 쿨다운)
       if (pendingForNotify.length > 0) {
+        // delayNotified에 등록 (재알림 방지)
         pendingForNotify.forEach((u) => delayNotified.add(u));
-        const count = pendingForNotify.length;
-        const msg =
-          count === 1
-            ? '아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.'
-            : `노트 ${count}개가 아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.`;
-        await sendMessage(mainJid, msg);
-        logger.info({ uuids: pendingForNotify, count }, 'Vault note batch delay notification sent');
+
+        // 쿨다운 내이면 알림 억제 (다음 쿨다운 만료 시 새 pending이 있으면 발송)
+        const now = Date.now();
+        if (now - lastBatchNotifyTime >= BATCH_COOLDOWN) {
+          // 전체 미처리 개수 (이번 배치 + 이전에 이미 알림한 것 중 아직 미처리)
+          const totalPending = [...tracked.keys()].filter(
+            (u) => !delayNotified.has(u) || pendingForNotify.includes(u),
+          ).length || pendingForNotify.length;
+          const count = totalPending;
+          const msg =
+            count === 1
+              ? '아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.'
+              : `노트 ${count}개가 아직 처리가 안 된 것 같은데… 랩탑이 꺼져 있으면 켜면 자동으로 되는 거야. 내용은 베티가 들고 있으니 사라지진 않을까.`;
+          await sendMessage(mainJid, msg);
+          lastBatchNotifyTime = now;
+          logger.info(
+            { uuids: pendingForNotify, count },
+            'Vault note batch delay notification sent',
+          );
+        } else {
+          logger.info(
+            { uuids: pendingForNotify, cooldownRemaining: BATCH_COOLDOWN - (now - lastBatchNotifyTime) },
+            'Vault note delay notification suppressed — cooldown active',
+          );
+        }
       }
     } catch (err) {
       logger.error({ err }, 'Vault watcher error');
