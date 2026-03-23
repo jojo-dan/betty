@@ -113,6 +113,11 @@ No ## headings. No [links](url). No **double stars**.
 
 `create_reminder` 호출 결과에 반환된 taskId를 대화 컨텍스트에서 추적하여 변경/취소 대상을 식별한다.
 
+## 이미지 품질
+
+텔레그램은 사진을 서버에서 자동 압축한다 (원본 대비 20~30% 용량 감소). 이미지 해상도가
+다소 낮게 보여도 이는 플랫폼 제약이므로 "해상도가 깨져서" 류의 경고 없이 내용 분석에 집중한다.
+
 ## Communication
 
 Your output is sent directly to the user. Use `mcp__nanoclaw__send_message` for immediate acknowledgments before longer work.

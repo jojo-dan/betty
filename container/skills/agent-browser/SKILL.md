@@ -136,7 +136,7 @@ agent-browser eval "document.title"   # Run JavaScript
 
 ## 이미지 저장 (vault 첨부용)
 
-이미지를 vault 노트에 첨부하려면 `/workspace/media-staging/` 경로에 저장한다 (쓰기 가능).
+이미지를 vault 노트에 첨부하려면 `/workspace/media/` 경로에 저장한다. 기존 파일을 덮어쓰거나 삭제하지 않는다.
 
 ## Example: Form submission
 

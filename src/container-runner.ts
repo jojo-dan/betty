@@ -248,14 +248,16 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-  // Media files: mount group's media directory read-only so Claude can access downloaded files
+  // Media files: mount group's media directory RW so Claude can access and save files
   const mediaDir = path.join(DATA_DIR, 'media', group.folder);
   fs.mkdirSync(mediaDir, { recursive: true });
+  fs.chownSync(mediaDir, 1000, 1000);
   mounts.push({
     hostPath: mediaDir,
     containerPath: '/workspace/media',
-    readonly: true,
+    readonly: false,
   });
+
 
   // Write OPENAI_API_KEY to a file so SKILL.md can read it via $(cat ...)
   // The SDK Bash tool does not expose Docker -e env vars to the shell,

@@ -6,6 +6,9 @@ Usage:
   source tests/.venv/bin/activate
   python tests/tg_send.py "메시지 내용"
   python tests/tg_send.py "메시지 내용" --timeout 120
+  python tests/tg_send.py --file photo.jpg "캡션"
+  python tests/tg_send.py --file a.jpg --file b.jpg "캡션"
+  python tests/tg_send.py --file photo.jpg
 
 Exit codes:
   0 — response received (response text printed to stdout)
@@ -39,13 +42,20 @@ async def wait_for_response(client, bot_entity, after_date, timeout):
     return None
 
 
-async def main(message: str, timeout: int):
+async def main(message, timeout: int, files=None):
     client = TelegramClient(SESSION_FILE, API_ID, API_HASH)
     await client.start()
 
     bot = await client.get_entity(BOT_USERNAME)
     ts = time.time()
-    await client.send_message(bot, message)
+
+    if files is not None:
+        if len(files) == 1:
+            await client.send_file(bot, files[0], caption=message)
+        else:
+            await client.send_file(bot, files, caption=message)
+    else:
+        await client.send_message(bot, message)
 
     resp = await wait_for_response(client, bot, ts, timeout)
 
@@ -61,9 +71,14 @@ async def main(message: str, timeout: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Send a message to Betty and print the response.")
-    parser.add_argument("message", help="Message to send")
+    parser.add_argument("message", nargs="?", default=None, help="Message to send")
     parser.add_argument("--timeout", type=int, default=90, help="Seconds to wait for response (default: 90)")
+    parser.add_argument("--file", dest="files", action="append", default=None, metavar="FILE", help="File(s) to send. Can be specified multiple times for album.")
     args = parser.parse_args()
 
-    exit_code = asyncio.run(main(args.message, args.timeout))
+    if args.files is None and args.message is None:
+        sys.stderr.write("error: provide a message and/or --file\n")
+        sys.exit(1)
+
+    exit_code = asyncio.run(main(args.message, args.timeout, args.files))
     sys.exit(exit_code)

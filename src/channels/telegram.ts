@@ -48,11 +48,19 @@ export class TelegramChannel implements Channel {
   private bot: Bot | null = null;
   private opts: TelegramChannelOpts;
   private botToken: string;
-  private mediaGroupBuffer: Map<string, {
-    messages: Array<{ fileId: string; fileUniqueId: string; caption: string; folder: string }>;
-    timer: ReturnType<typeof setTimeout>;
-    ctx: any;
-  }> = new Map();
+  private mediaGroupBuffer: Map<
+    string,
+    {
+      messages: Array<{
+        fileId: string;
+        fileUniqueId: string;
+        caption: string;
+        folder: string;
+      }>;
+      timer: ReturnType<typeof setTimeout>;
+      ctx: any;
+    }
+  > = new Map();
 
   constructor(botToken: string, opts: TelegramChannelOpts) {
     this.botToken = botToken;
@@ -310,16 +318,21 @@ export class TelegramChannel implements Channel {
           folder: registeredGroup.folder,
         });
         clearTimeout(existing.timer);
-        existing.timer = setTimeout(() => this.flushMediaGroup(mediaGroupId), 300);
+        existing.timer = setTimeout(
+          () => this.flushMediaGroup(mediaGroupId),
+          300,
+        );
       } else {
         const timer = setTimeout(() => this.flushMediaGroup(mediaGroupId), 300);
         this.mediaGroupBuffer.set(mediaGroupId, {
-          messages: [{
-            fileId: photo?.file_id || '',
-            fileUniqueId: photo?.file_unique_id || '',
-            caption,
-            folder: registeredGroup.folder,
-          }],
+          messages: [
+            {
+              fileId: photo?.file_id || '',
+              fileUniqueId: photo?.file_unique_id || '',
+              caption,
+              folder: registeredGroup.folder,
+            },
+          ],
           timer,
           ctx,
         });
@@ -446,11 +459,11 @@ export class TelegramChannel implements Channel {
           return `[Photo: /workspace/media/${fileName}]`;
         }
         return '[Photo]';
-      })
+      }),
     );
 
     const allPhotos = photoContents.join(' ');
-    const caption = group.messages.find(m => m.caption)?.caption || '';
+    const caption = group.messages.find((m) => m.caption)?.caption || '';
     const content = caption ? `${allPhotos} ${caption}` : allPhotos;
 
     const timestamp = new Date(ctx.message.date * 1000).toISOString();
@@ -459,10 +472,15 @@ export class TelegramChannel implements Channel {
       ctx.from?.username ||
       ctx.from?.id?.toString() ||
       'Unknown';
-    const isGroup =
-      ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+    const isGroup = ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
 
-    this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
+    this.opts.onChatMetadata(
+      chatJid,
+      timestamp,
+      undefined,
+      'telegram',
+      isGroup,
+    );
     this.opts.onMessage(chatJid, {
       id: ctx.message.message_id.toString(),
       chat_jid: chatJid,
@@ -473,7 +491,10 @@ export class TelegramChannel implements Channel {
       is_from_me: false,
     });
 
-    logger.info({ mediaGroupId, photoCount: group.messages.length }, 'Media group flushed');
+    logger.info(
+      { mediaGroupId, photoCount: group.messages.length },
+      'Media group flushed',
+    );
   }
 
   async sendMessage(jid: string, text: string): Promise<void> {
