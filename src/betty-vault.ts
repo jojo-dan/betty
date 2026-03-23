@@ -67,7 +67,6 @@ export function startVaultWatcher(
 
       // 2. 추적 중인 항목 처리
       const pendingForNotify: string[] = [];
-      const completedCreateUuids: string[] = [];
 
       for (const [uuid, { createdAt, action: trackedAction }] of tracked) {
         const doneFile = path.join(PROCESSED_DIR, `${uuid}.done`);
@@ -83,18 +82,11 @@ export function startVaultWatcher(
           } catch {
             // 읽기 실패 — 빈 문자열로 처리 (레거시 동작)
           }
-          if (action === 'create' || action === '') {
-            completedCreateUuids.push(uuid);
-            logger.info(
-              { uuid, action },
-              'Vault note completed — queued for batch message',
-            );
-          } else {
-            logger.info(
-              { uuid, action },
-              'Vault note completed — silent (non-create action)',
-            );
-          }
+          // 모든 .done은 무음 처리 (접수 확인만으로 충분)
+          logger.info(
+            { uuid, action: action || 'create' },
+            'Vault note completed — silent',
+          );
           continue;
         }
 
@@ -117,20 +109,6 @@ export function startVaultWatcher(
             'Delay notification skipped — non-create action',
           );
         }
-      }
-
-      // 완료 알림 배치 발송 (폴링 사이클당 최대 1회)
-      if (completedCreateUuids.length > 0) {
-        const count = completedCreateUuids.length;
-        const msg =
-          count === 1
-            ? '노트 만들어뒀으니 확인해보면 되는 거야.'
-            : `노트 ${count}개 만들어뒀으니 확인해보면 되는 거야.`;
-        await sendMessage(mainJid, msg);
-        logger.info(
-          { uuids: completedCreateUuids, count },
-          'Vault note batch completed — message sent',
-        );
       }
 
       // 지연 알림 배치 발송 (폴링 사이클당 최대 1회 + 5분 쿨다운)
