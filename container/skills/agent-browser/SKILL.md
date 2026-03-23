@@ -134,6 +134,10 @@ agent-browser storage local set k v       # Set value
 agent-browser eval "document.title"   # Run JavaScript
 ```
 
+## 이미지 저장 (vault 첨부용)
+
+이미지를 vault 노트에 첨부하려면 `/workspace/media-staging/` 경로에 저장한다 (쓰기 가능).
+
 ## Example: Form submission
 
 ```bash
