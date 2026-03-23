@@ -48,6 +48,11 @@ export class TelegramChannel implements Channel {
   private bot: Bot | null = null;
   private opts: TelegramChannelOpts;
   private botToken: string;
+  private mediaGroupBuffer: Map<string, {
+    messages: Array<{ fileId: string; fileUniqueId: string; caption: string; folder: string }>;
+    timer: ReturnType<typeof setTimeout>;
+    ctx: any;
+  }> = new Map();
 
   constructor(botToken: string, opts: TelegramChannelOpts) {
     this.botToken = botToken;
@@ -272,17 +277,53 @@ export class TelegramChannel implements Channel {
       });
     };
 
-    this.bot.on('message:photo', (ctx) => {
+    this.bot.on('message:photo', async (ctx) => {
       const photo = ctx.message.photo?.at(-1);
-      return storeMediaMessage(
-        ctx,
-        photo?.file_id,
-        photo?.file_unique_id,
-        'photo',
-        'jpg',
-        (f) => `[Photo: /workspace/media/${f}]`,
-        '[Photo]',
-      );
+      const mediaGroupId = ctx.message.media_group_id;
+
+      // 단일 사진 (앨범 아님) → 기존 즉시 처리
+      if (!mediaGroupId) {
+        return storeMediaMessage(
+          ctx,
+          photo?.file_id,
+          photo?.file_unique_id,
+          'photo',
+          'jpg',
+          (f) => `[Photo: /workspace/media/${f}]`,
+          '[Photo]',
+        );
+      }
+
+      // 앨범 사진 → 버퍼링 (다운로드는 플러시 시점에 일괄 처리)
+      const chatJid = `tg:${ctx.chat.id}`;
+      const registeredGroup = this.opts.registeredGroups()[chatJid];
+      if (!registeredGroup) return;
+
+      const caption = ctx.message.caption || '';
+
+      const existing = this.mediaGroupBuffer.get(mediaGroupId);
+      if (existing) {
+        existing.messages.push({
+          fileId: photo?.file_id || '',
+          fileUniqueId: photo?.file_unique_id || '',
+          caption,
+          folder: registeredGroup.folder,
+        });
+        clearTimeout(existing.timer);
+        existing.timer = setTimeout(() => this.flushMediaGroup(mediaGroupId), 300);
+      } else {
+        const timer = setTimeout(() => this.flushMediaGroup(mediaGroupId), 300);
+        this.mediaGroupBuffer.set(mediaGroupId, {
+          messages: [{
+            fileId: photo?.file_id || '',
+            fileUniqueId: photo?.file_unique_id || '',
+            caption,
+            folder: registeredGroup.folder,
+          }],
+          timer,
+          ctx,
+        });
+      }
     });
     this.bot.on('message:animation', (ctx) => {
       const animation = ctx.message.animation;
@@ -378,6 +419,61 @@ export class TelegramChannel implements Channel {
         },
       });
     });
+  }
+
+  private async flushMediaGroup(mediaGroupId: string): Promise<void> {
+    const group = this.mediaGroupBuffer.get(mediaGroupId);
+    if (!group) return;
+    this.mediaGroupBuffer.delete(mediaGroupId);
+
+    const ctx = group.ctx;
+    const chatJid = `tg:${ctx.chat.id}`;
+
+    // 모든 사진 다운로드를 병렬로 실행
+    const photoContents = await Promise.all(
+      group.messages.map(async (m) => {
+        if (!m.fileId || !m.fileUniqueId || !this.bot) return '[Photo]';
+        const filePath = await downloadMediaFile(
+          this.bot,
+          m.fileId,
+          m.fileUniqueId,
+          m.folder,
+          'photo',
+          'jpg',
+        );
+        if (filePath) {
+          const fileName = filePath.split('/').pop()!;
+          return `[Photo: /workspace/media/${fileName}]`;
+        }
+        return '[Photo]';
+      })
+    );
+
+    const allPhotos = photoContents.join(' ');
+    const caption = group.messages.find(m => m.caption)?.caption || '';
+    const content = caption ? `${allPhotos} ${caption}` : allPhotos;
+
+    const timestamp = new Date(ctx.message.date * 1000).toISOString();
+    const senderName =
+      ctx.from?.first_name ||
+      ctx.from?.username ||
+      ctx.from?.id?.toString() ||
+      'Unknown';
+    const isGroup =
+      ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+
+    this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
+    this.opts.onMessage(chatJid, {
+      id: ctx.message.message_id.toString(),
+      chat_jid: chatJid,
+      sender: ctx.from?.id?.toString() || '',
+      sender_name: senderName,
+      content,
+      timestamp,
+      is_from_me: false,
+    });
+
+    logger.info({ mediaGroupId, photoCount: group.messages.length }, 'Media group flushed');
   }
 
   async sendMessage(jid: string, text: string): Promise<void> {
