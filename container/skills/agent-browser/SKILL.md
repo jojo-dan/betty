@@ -138,6 +138,23 @@ agent-browser eval "document.title"   # Run JavaScript
 
 이미지를 vault 노트에 첨부하려면 `/workspace/media/` 경로에 저장한다. 기존 파일을 덮어쓰거나 삭제하지 않는다.
 
+## 영상 저장 (vault 첨부용)
+
+URL 페이지에서 영상을 추출하여 vault 노트에 첨부하려면:
+
+1. `agent-browser open <URL>` 후 `agent-browser wait --load networkidle` (Threads 등 SPA는 동적 로딩 필요)
+2. `agent-browser eval "document.querySelector('video')?.src"` 로 video src 추출
+3. src가 비어 있으면 `agent-browser eval "document.querySelector('video source')?.src"` 시도
+4. `curl -L -o /workspace/media/ref-<name>.mp4 "<video_src>"` — CDN 토큰 만료 전 즉시 실행
+5. 저장 경로는 `/workspace/media/ref-<name>.mp4` (기존 파일 덮어쓰기/삭제 금지)
+
+Gemini 영상 분석 연동: 다운로드한 영상을 분석하려면 응답 content에 `[Video: /workspace/media/ref-<name>.mp4]` 태그를 포함한다. betty-video 스킬이 자동 트리거되어 Gemini API로 영상 내용을 분석한다.
+
+주의사항:
+- 영상 파일은 수~수십 MB일 수 있다. 다운로드 완료를 확인한 후 다음 단계로 진행한다
+- meta CDN(Threads, Instagram) URL은 시간 제한 토큰이 포함되어 있으므로 추출 후 즉시 다운로드한다
+- video src가 blob: URL이면 직접 다운로드 불가 — 해당 케이스는 스킵하고 이미지만 처리한다
+
 ## Example: Form submission
 
 ```bash
