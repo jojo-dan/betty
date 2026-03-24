@@ -138,6 +138,8 @@ agent-browser eval "document.title"   # Run JavaScript
 
 이미지를 vault 노트에 첨부하려면 `/workspace/media/` 경로에 저장한다. 기존 파일을 덮어쓰거나 삭제하지 않는다.
 
+vault 첨부용 파일은 content에 `![[]]` embed를 쓰지 마라. vault-watcher가 자동으로 추가한다.
+
 ## 영상 저장 (vault 첨부용)
 
 URL 페이지에서 영상을 추출하여 vault 노트에 첨부하려면:
@@ -154,6 +156,7 @@ Gemini 영상 분석 연동: 다운로드한 영상을 분석하려면 응답 co
 - 영상 파일은 수~수십 MB일 수 있다. 다운로드 완료를 확인한 후 다음 단계로 진행한다
 - meta CDN(Threads, Instagram) URL은 시간 제한 토큰이 포함되어 있으므로 추출 후 즉시 다운로드한다
 - video src가 blob: URL이면 직접 다운로드 불가 — 해당 케이스는 스킵하고 이미지만 처리한다
+- vault 첨부용 파일은 content에 `![[]]` embed를 쓰지 마라. vault-watcher가 자동으로 추가한다
 
 ## Example: Form submission
 
