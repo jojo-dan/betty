@@ -255,7 +255,9 @@ attachments 항목의 source_path는 `/workspace/media/<filename>` 형식을 사
 - 포함: photo(jpg/jpeg/png/gif/webp), animation(mp4), video(mp4), document(이미지 확장자)
 - 제외: voice, audio 등 비스트림 미디어
 
-vault-watcher.sh가 attachments를 읽고 VPS에서 로컬 `~/hq/personal/attachments/`로 SCP 복사하며, 노트 content에 `![[filename]]`을 자동 임베드한다. **에이전트가 직접 `![[filename]]`을 content에 넣지 않는다.**
+vault-watcher.sh가 attachments를 읽고 VPS에서 로컬 `~/hq/personal/attachments/`로 SCP 복사하며, 노트 content에 `![[filename]]`을 자동 임베드한다. **content에 `![[filename]]`을 절대 포함하지 마라 — vault-watcher가 자동 삽입하므로 에이전트가 넣으면 중복된다.**
+
+> **금지 예시:** `"content": "내용 텍스트\n\n![[image.jpg]]"` — content 안에 `![[...]]` 삽입 금지
 
 첨부 미디어가 없는 노트는 `attachments` 필드를 생략하거나 빈 배열 `[]`를 사용한다.
 
