@@ -72,10 +72,50 @@ estimated_seconds = last_segment.start + last_segment.duration
 
 1. oEmbed API → 메타데이터 (title, author_name)
 2. youtube-transcript-api + WEBSHARE_PROXY_URL → 자막
-3. oEmbed 401 (임베딩 비허용 영상) → "메타데이터 없음" 명시 + 자막만으로 요약
-4. 자막 실패 → "영상에 접근할 수 없어" 응답
+3. 자막 실패 시 → yt-dlp 오디오 다운로드 → Whisper API 전사
+4. oEmbed 실패 시 → "메타데이터 없음" 명시 + 자막/전사만으로 요약
+5. 자막 + Whisper 모두 실패 → "영상에 접근할 수 없어" 응답
+
+## 음성 전사 Fallback (Whisper STT)
+
+youtube-transcript-api 자막 추출 실패 시(자막 없는 Shorts 등) 아래 절차를 따른다.
+
+### yt-dlp 오디오 다운로드
+
+```bash
+yt-dlp -x --audio-format mp3 --audio-quality 5 \
+  --proxy "${WEBSHARE_PROXY_URL}" \
+  -o "/tmp/yt_audio_%(id)s.%(ext)s" \
+  "https://www.youtube.com/watch?v=${VIDEO_ID}"
+```
+
+- `WEBSHARE_PROXY_URL` 프록시 필수 (VPS IP 차단)
+- Shorts는 최대 60초 → 오디오 ~1MB
+
+### Whisper API 전사
+
+```bash
+curl -s https://api.openai.com/v1/audio/transcriptions \
+  -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+  -F file="@/tmp/yt_audio_${VIDEO_ID}.mp3" \
+  -F model="whisper-1" \
+  -F language="ko"
+```
+
+- `language="ko"` 한국어 우선. 영어 콘텐츠면 자동 처리됨
+- 응답: `{"text": "전사된 텍스트..."}`
+
+### 임시 파일 정리
+
+전사 완료 후 즉시 삭제:
+
+```bash
+rm -f /tmp/yt_audio_${VIDEO_ID}.mp3
+```
 
 ## 응답 형식
+
+자막 경로 (기본):
 
 ```
 *[영상 제목]*
@@ -88,8 +128,21 @@ _[채널명] · [길이]_
 • [주요 포인트 3]
 ```
 
-- 긴 자막은 핵심 위주로 요약
-- 메타데이터 없이 자막만 사용한 경우 제목/채널 대신 "(메타데이터 없음)" 명시
+Whisper 전사 경로 (자막 없는 경우):
+
+```
+*[영상 제목]*
+_[채널명] · [길이] · 음성 전사_
+
+[핵심 요약]
+
+• [주요 포인트 1]
+• [주요 포인트 2]
+• [주요 포인트 3]
+```
+
+- 긴 자막/전사는 핵심 위주로 요약
+- 메타데이터 없이 자막/전사만 사용한 경우 제목/채널 대신 "(메타데이터 없음)" 명시
 - 자막 없이 메타데이터만 있는 경우 "(자막 추출 실패)" 명시
 
 ## 제한사항
