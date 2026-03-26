@@ -179,19 +179,6 @@ export class TelegramChannel implements Channel {
         return;
       }
 
-      const convTag =
-        info.conversations >= SESSION_CRITICAL_CONVERSATIONS
-          ? '[!!]'
-          : info.conversations >= SESSION_WARN_CONVERSATIONS
-            ? '[!]'
-            : '[ok]';
-      const sizeTag =
-        info.sizeMB >= SESSION_CRITICAL_SIZE_MB
-          ? '[!!]'
-          : info.sizeMB >= SESSION_WARN_SIZE_MB
-            ? '[!]'
-            : '[ok]';
-
       const isCritical =
         info.conversations >= SESSION_CRITICAL_CONVERSATIONS ||
         info.sizeMB >= SESSION_CRITICAL_SIZE_MB;
@@ -201,22 +188,33 @@ export class TelegramChannel implements Channel {
 
       let voice: string;
       if (isCritical) {
-        voice =
-          '세션이 너무 무거운 거야. /clear 로 초기화하지 않으면 안 되는 거야.';
+        voice = '세션이 너무 무거운 거야. 초기화해야 되는 거야.';
       } else if (isWarn) {
-        voice =
-          '세션이 좀 무거워진 거야. 슬슬 /clear 를 생각해야 할까.';
+        voice = '세션이 좀 무거워진 거야. 슬슬 정리해야 할까.';
       } else {
         voice = '세션은 아직 여유 있는 거야.';
       }
+
+      const convDot =
+        info.conversations >= SESSION_CRITICAL_CONVERSATIONS
+          ? '🔴'
+          : info.conversations >= SESSION_WARN_CONVERSATIONS
+            ? '🟡'
+            : '🟢';
+      const sizeDot =
+        info.sizeMB >= SESSION_CRITICAL_SIZE_MB
+          ? '🔴'
+          : info.sizeMB >= SESSION_WARN_SIZE_MB
+            ? '🟡'
+            : '🟢';
 
       const model = info.model || '기본값';
       const lines = [
         voice,
         '',
-        `${convTag} 대화: ${info.conversations}/${SESSION_CRITICAL_CONVERSATIONS}회`,
-        `${sizeTag} 크기: ${info.sizeMB}MB/${SESSION_CRITICAL_SIZE_MB}MB`,
-        `[--] 모델: ${model}`,
+        `대화: ${info.conversations}/${SESSION_CRITICAL_CONVERSATIONS}회 ${convDot}`,
+        `크기: ${info.sizeMB}MB/${SESSION_CRITICAL_SIZE_MB}MB ${sizeDot}`,
+        `모델: ${model}`,
       ];
 
       await ctx.reply(lines.join('\n'));
