@@ -6,7 +6,11 @@ import { readEnvFile } from './env.js';
 // Read config values from .env (falls back to process.env).
 // Secrets (API keys, tokens) are NOT read here — they are loaded only
 // by the credential proxy (credential-proxy.ts), never exposed to containers.
-const envConfig = readEnvFile(['ASSISTANT_NAME', 'ASSISTANT_HAS_OWN_NUMBER']);
+const envConfig = readEnvFile([
+  'ASSISTANT_NAME',
+  'ASSISTANT_HAS_OWN_NUMBER',
+  'OWNER_TELEGRAM_ID',
+]);
 
 export const ASSISTANT_NAME =
   process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
@@ -66,6 +70,16 @@ export const TRIGGER_PATTERN = new RegExp(
   `^@${escapeRegex(ASSISTANT_NAME)}\\b`,
   'i',
 );
+
+// Owner authentication for privileged Telegram commands (/restart, /clear)
+export const OWNER_TELEGRAM_ID =
+  process.env.OWNER_TELEGRAM_ID || envConfig.OWNER_TELEGRAM_ID || '';
+
+// Session health thresholds for /context command
+export const SESSION_WARN_CONVERSATIONS = 30;
+export const SESSION_WARN_SIZE_MB = 30;
+export const SESSION_CRITICAL_CONVERSATIONS = 50;
+export const SESSION_CRITICAL_SIZE_MB = 50;
 
 // Timezone for scheduled tasks (cron expressions, etc.)
 // Uses system timezone by default
