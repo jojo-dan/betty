@@ -168,6 +168,126 @@ export class TelegramChannel implements Channel {
       }
     });
 
+    // Command to show VPS system status (owner only)
+    this.bot.command('status', async (ctx) => {
+      if (!OWNER_TELEGRAM_ID || ctx.from?.id.toString() !== OWNER_TELEGRAM_ID)
+        return;
+
+      const cmd = [
+        'echo "CPU:$(top -bn1 | grep \'Cpu(s)\' | awk \'{print $2}\')"',
+        'echo "MEM:$(free -m | awk \'/Mem:/{printf \"%d/%dMB\", $3, $2}\')"',
+        'echo "DISK:$(df -h / | awk \'NR==2{print $5}\' | tr -d \'%\')"',
+        'echo "UPTIME:$(uptime -p)"',
+        'echo "BETTY:$(systemctl is-active betty)"',
+      ].join('; ');
+
+      exec(cmd, (err, stdout) => {
+        if (err) {
+          ctx.reply(
+            '상태를 확인할 수 없었어. VPS에 문제가 있을 수 있는 거야.',
+          );
+          return;
+        }
+
+        const lines = stdout.trim().split('\n');
+        const get = (prefix: string): string | null => {
+          const line = lines.find((l) => l.startsWith(prefix + ':'));
+          return line ? line.slice(prefix.length + 1).trim() : null;
+        };
+
+        // Parse CPU
+        const cpuRaw = get('CPU');
+        const cpuVal = cpuRaw !== null ? parseFloat(cpuRaw) : NaN;
+        const cpuDisplay = isNaN(cpuVal) ? 'N/A' : `${cpuVal.toFixed(1)}%`;
+        const cpuDot = isNaN(cpuVal)
+          ? '⚪'
+          : cpuVal >= 90
+            ? '🔴'
+            : cpuVal >= 70
+              ? '🟡'
+              : '🟢';
+
+        // Parse MEM (format: used/totalMB)
+        const memRaw = get('MEM');
+        let memDisplay = 'N/A';
+        let memDot = '⚪';
+        if (memRaw) {
+          const memMatch = memRaw.match(/^(\d+)\/(\d+)MB$/);
+          if (memMatch) {
+            const used = parseInt(memMatch[1], 10);
+            const total = parseInt(memMatch[2], 10);
+            const pct = total > 0 ? (used / total) * 100 : NaN;
+            const pctStr = isNaN(pct) ? '?' : `${pct.toFixed(0)}%`;
+            memDisplay = `${used}/${total}MB (${pctStr})`;
+            memDot = isNaN(pct) ? '⚪' : pct >= 90 ? '🔴' : pct >= 70 ? '🟡' : '🟢';
+          }
+        }
+
+        // Parse DISK (percent only, e.g. "53")
+        const diskRaw = get('DISK');
+        const diskPct = diskRaw !== null ? parseFloat(diskRaw) : NaN;
+        const diskDisplay = isNaN(diskPct) ? 'N/A' : `${diskPct.toFixed(0)}%`;
+        const diskDot = isNaN(diskPct)
+          ? '⚪'
+          : diskPct >= 85
+            ? '🔴'
+            : diskPct >= 70
+              ? '🟡'
+              : '🟢';
+
+        // Parse UPTIME
+        const uptimeRaw = get('UPTIME');
+        const uptimeDisplay = uptimeRaw || 'N/A';
+
+        // Parse BETTY
+        const bettyRaw = get('BETTY');
+        const bettyDisplay = bettyRaw || 'N/A';
+        const bettyDot = bettyRaw === 'active' ? '🟢' : '🔴';
+
+        // Parse MEM percent helper (reused for voice logic)
+        const memPct = (() => {
+          if (!memRaw) return NaN;
+          const m = memRaw.match(/^(\d+)\/(\d+)MB$/);
+          if (!m) return NaN;
+          const t = parseInt(m[2], 10);
+          return t > 0 ? (parseInt(m[1], 10) / t) * 100 : NaN;
+        })();
+
+        const bettyDown = bettyRaw !== null && bettyRaw !== 'active';
+        const hasCritical =
+          cpuVal >= 90 ||
+          (!isNaN(memPct) && memPct >= 90) ||
+          diskPct >= 85 ||
+          bettyDown;
+        const hasWarn =
+          !hasCritical &&
+          (cpuVal >= 70 || (!isNaN(memPct) && memPct >= 70) || diskPct >= 70);
+
+        let voice: string;
+        if (bettyDown) {
+          voice = '베티 서비스가 꺼진 거야. 확인해봐.';
+        } else if (hasCritical) {
+          voice = '뭔가 빡빡한 거야. 확인해봐.';
+        } else if (hasWarn) {
+          voice = '슬슬 무거워지는 거야. 봐두는 게 좋을까.';
+        } else {
+          voice = 'VPS는 잘 돌아가고 있는 거야.';
+        }
+
+        const output = [
+          voice,
+          '',
+          `${cpuDot} CPU: ${cpuDisplay}`,
+          `${memDot} Mem: ${memDisplay}`,
+          `${diskDot} Disk: ${diskDisplay}`,
+          `⏱ Uptime: ${uptimeDisplay}`,
+          `${bettyDot} Betty: ${bettyDisplay}`,
+        ].join('\n');
+
+        ctx.reply(output);
+      });
+    });
+
     // Command to show session context health
     this.bot.command('context', async (ctx) => {
       const chatJid = `tg:${ctx.chat.id}`;
@@ -535,6 +655,7 @@ export class TelegramChannel implements Channel {
             { command: 'restart', description: '서비스/VPS 재시작' },
             { command: 'clear', description: '세션 초기화' },
             { command: 'context', description: '세션 상태 확인' },
+            { command: 'status', description: 'VPS 시스템 상태' },
           ]);
           resolve();
         },
