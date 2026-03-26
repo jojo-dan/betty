@@ -174,18 +174,16 @@ export class TelegramChannel implements Channel {
         return;
 
       const cmd = [
-        'echo "CPU:$(top -bn1 | grep \'Cpu(s)\' | awk \'{print $2}\')"',
+        "echo \"CPU:$(top -bn1 | grep 'Cpu(s)' | awk '{print $2}')\"",
         'echo "MEM:$(free -m | awk \'/Mem:/{printf \"%d/%dMB\", $3, $2}\')"',
-        'echo "DISK:$(df -h / | awk \'NR==2{print $5}\' | tr -d \'%\')"',
+        "echo \"DISK:$(df -h / | awk 'NR==2{printf \"%s/%s %s\", $3, $2, $5}')\"",
         'echo "UPTIME:$(uptime -p)"',
         'echo "BETTY:$(systemctl is-active betty)"',
       ].join('; ');
 
       exec(cmd, (err, stdout) => {
         if (err) {
-          ctx.reply(
-            '상태를 확인할 수 없었어. VPS에 문제가 있을 수 있는 거야.',
-          );
+          ctx.reply('상태를 확인할 수 없었어. VPS에 문제가 있을 수 있는 거야.');
           return;
         }
 
@@ -219,21 +217,37 @@ export class TelegramChannel implements Channel {
             const pct = total > 0 ? (used / total) * 100 : NaN;
             const pctStr = isNaN(pct) ? '?' : `${pct.toFixed(0)}%`;
             memDisplay = `${used}/${total}MB (${pctStr})`;
-            memDot = isNaN(pct) ? '⚪' : pct >= 90 ? '🔴' : pct >= 70 ? '🟡' : '🟢';
+            memDot = isNaN(pct)
+              ? '⚪'
+              : pct >= 90
+                ? '🔴'
+                : pct >= 70
+                  ? '🟡'
+                  : '🟢';
           }
         }
 
-        // Parse DISK (percent only, e.g. "53")
+        // Parse DISK (format: "usedG/totalG pct%", e.g. "13G/24G 53%")
         const diskRaw = get('DISK');
-        const diskPct = diskRaw !== null ? parseFloat(diskRaw) : NaN;
-        const diskDisplay = isNaN(diskPct) ? 'N/A' : `${diskPct.toFixed(0)}%`;
-        const diskDot = isNaN(diskPct)
-          ? '⚪'
-          : diskPct >= 85
-            ? '🔴'
-            : diskPct >= 70
-              ? '🟡'
-              : '🟢';
+        let diskDisplay = 'N/A';
+        let diskDot = '⚪';
+        let diskPct = NaN;
+        if (diskRaw) {
+          const diskMatch = diskRaw.match(/^(\S+)\/(\S+)\s+(\d+)%$/);
+          if (diskMatch) {
+            const used = diskMatch[1];
+            const total = diskMatch[2];
+            diskPct = parseInt(diskMatch[3], 10);
+            diskDisplay = `${used}/${total} (${diskPct}%)`;
+            diskDot = isNaN(diskPct)
+              ? '⚪'
+              : diskPct >= 85
+                ? '🔴'
+                : diskPct >= 70
+                  ? '🟡'
+                  : '🟢';
+          }
+        }
 
         // Parse UPTIME
         const uptimeRaw = get('UPTIME');
