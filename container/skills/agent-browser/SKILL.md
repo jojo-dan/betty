@@ -140,6 +140,23 @@ agent-browser eval "document.title"   # Run JavaScript
 
 vault 첨부용 파일은 content에 `![[]]` embed를 쓰지 마라. vault-watcher가 자동으로 추가한다.
 
+### 새 노트 생성 시 (create)
+
+이미지를 `/workspace/media/`에 저장한 후 `create-note` action을 호출할 때는 `attachments` 필드에 포함하지 않아도 된다. vault-watcher가 `/workspace/media/` 파일을 감지하여 자동으로 연결한다.
+
+### 기존 노트 수정 시 (update)
+
+기존 노트에 이미지를 추가할 때는 `/workspace/media/`에 저장한 후 반드시 `update-note` action의 `attachments` 필드에 해당 파일 경로를 명시해야 한다. vault-watcher는 새로 생성된 노트만 자동 감지하므로, 기존 노트에 대한 첨부는 명시적으로 전달해야 반영된다.
+
+```json
+{
+  "action": "update-note",
+  "path": "노트/경로.md",
+  "content": "업데이트할 내용",
+  "attachments": ["/workspace/media/ref-example.png"]
+}
+```
+
 ## 영상 저장 (vault 첨부용)
 
 URL 페이지에서 영상을 추출하여 vault 노트에 첨부하려면:
