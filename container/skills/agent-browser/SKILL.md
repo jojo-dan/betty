@@ -151,9 +151,17 @@ vault 첨부용 파일은 content에 `![[]]` embed를 쓰지 마라. vault-watch
 ```json
 {
   "action": "update-note",
-  "path": "노트/경로.md",
+  "id": "uuid-v4",
+  "target_path": "노트/경로.md",
+  "operation": "append",
   "content": "업데이트할 내용",
-  "attachments": ["/workspace/media/ref-example.png"]
+  "attachments": [
+    {
+      "source_path": "/workspace/media/ref-example.png",
+      "filename": "ref-example.png",
+      "dest_filename": "ref-example.png"
+    }
+  ]
 }
 ```
 
