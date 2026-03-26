@@ -32,11 +32,11 @@ SESSION_FILE = str(Path(__file__).parent / "telethon_session")
 
 
 async def wait_for_response(client, bot_entity, after_date, timeout):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        messages = await client.get_messages(bot_entity, limit=5)
+    deadline = time.time() + timeout if timeout > 0 else None
+    while deadline is None or time.time() < deadline:
+        messages = await client.get_messages(bot_entity, limit=10)
         for msg in messages:
-            if msg.date.timestamp() > after_date and not msg.out:
+            if int(msg.date.timestamp()) >= int(after_date) and msg.sender_id == bot_entity.id:
                 return msg
         await asyncio.sleep(3)
     return None
@@ -72,7 +72,7 @@ async def main(message, timeout: int, files=None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Send a message to Betty and print the response.")
     parser.add_argument("message", nargs="?", default=None, help="Message to send")
-    parser.add_argument("--timeout", type=int, default=90, help="Seconds to wait for response (default: 90)")
+    parser.add_argument("--timeout", type=int, default=180, help="Seconds to wait for response (default: 180, 0 = no timeout)")
     parser.add_argument("--file", dest="files", action="append", default=None, metavar="FILE", help="File(s) to send. Can be specified multiple times for album.")
     args = parser.parse_args()
 
