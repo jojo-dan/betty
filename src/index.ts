@@ -4,6 +4,7 @@ import path from 'path';
 import {
   ASSISTANT_NAME,
   CREDENTIAL_PROXY_PORT,
+  DATA_DIR,
   IDLE_TIMEOUT,
   POLL_INTERVAL,
   TIMEZONE,
@@ -27,6 +28,7 @@ import {
   PROXY_BIND_HOST,
 } from './container-runtime.js';
 import {
+  deleteSession,
   getAllChats,
   getAllRegisteredGroups,
   getAllSessions,
@@ -586,6 +588,72 @@ async function main(): Promise<void> {
       isGroup?: boolean,
     ) => storeChatMetadata(chatJid, timestamp, name, channel, isGroup),
     registeredGroups: () => registeredGroups,
+
+    clearSession: async (chatJid: string): Promise<string | null> => {
+      const group = registeredGroups[chatJid];
+      if (!group) return null;
+      const folder = group.folder;
+
+      // Graceful close running container
+      queue.closeStdin(chatJid);
+
+      // Delete from DB and in-memory
+      deleteSession(folder);
+      delete sessions[folder];
+
+      // Remove session directory
+      const sessionDir = path.join(DATA_DIR, 'sessions', folder);
+      try {
+        fs.rmSync(sessionDir, { recursive: true, force: true });
+      } catch {
+        /* directory may not exist */
+      }
+
+      logger.info({ chatJid, folder }, 'Session cleared via /clear command');
+      return folder;
+    },
+
+    getSessionInfo: async (
+      chatJid: string,
+    ): Promise<{
+      conversations: number;
+      sizeMB: number;
+      model: string | null;
+    } | null> => {
+      const group = registeredGroups[chatJid];
+      if (!group) return null;
+      const folder = group.folder;
+
+      const sessionDir = path.join(DATA_DIR, 'sessions', folder);
+      const sessionEnvDir = path.join(sessionDir, '.claude', 'session-env');
+
+      // Count conversations (session-env subdirectories)
+      let conversations = 0;
+      try {
+        const entries = fs.readdirSync(sessionEnvDir, { withFileTypes: true });
+        conversations = entries.filter((e) => e.isDirectory()).length;
+      } catch {
+        /* directory may not exist */
+      }
+
+      // Get directory size in MB
+      let sizeMB = 0;
+      try {
+        const { execSync } = await import('child_process');
+        const output = execSync(`du -sm "${sessionDir}" 2>/dev/null`, {
+          encoding: 'utf8',
+        });
+        sizeMB = parseInt(output.split('\t')[0], 10) || 0;
+      } catch {
+        /* du may fail */
+      }
+
+      return {
+        conversations,
+        sizeMB,
+        model: getCurrentModel(),
+      };
+    },
   };
 
   // Create and connect all registered channels.
