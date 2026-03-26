@@ -212,9 +212,9 @@ export class TelegramChannel implements Channel {
       const lines = [
         voice,
         '',
-        `대화: ${info.conversations}/${SESSION_CRITICAL_CONVERSATIONS}회 ${convDot}`,
-        `크기: ${info.sizeMB}MB/${SESSION_CRITICAL_SIZE_MB}MB ${sizeDot}`,
-        `모델: ${model}`,
+        `${convDot} 대화: ${info.conversations}/${SESSION_CRITICAL_CONVERSATIONS}회`,
+        `${sizeDot} 크기: ${info.sizeMB}MB/${SESSION_CRITICAL_SIZE_MB}MB`,
+        `🔵 모델: ${model}`,
       ];
 
       await ctx.reply(lines.join('\n'));
