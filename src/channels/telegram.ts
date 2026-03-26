@@ -1,6 +1,16 @@
+import { exec } from 'child_process';
+
 import { Api, Bot } from 'grammy';
 
-import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
+import {
+  ASSISTANT_NAME,
+  TRIGGER_PATTERN,
+  OWNER_TELEGRAM_ID,
+  SESSION_WARN_CONVERSATIONS,
+  SESSION_WARN_SIZE_MB,
+  SESSION_CRITICAL_CONVERSATIONS,
+  SESSION_CRITICAL_SIZE_MB,
+} from '../config.js';
 import { readEnvFile } from '../env.js';
 import { logger } from '../logger.js';
 import { getCurrentModel, setModel, getValidAliases } from '../betty-model.js';
@@ -13,10 +23,18 @@ import {
   RegisteredGroup,
 } from '../types.js';
 
+export interface SessionInfo {
+  conversations: number;
+  sizeMB: number;
+  model: string | null;
+}
+
 export interface TelegramChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
   registeredGroups: () => Record<string, RegisteredGroup>;
+  clearSession?: (chatJid: string) => Promise<string | null>;
+  getSessionInfo?: (chatJid: string) => Promise<SessionInfo | null>;
 }
 
 /**
@@ -113,6 +131,99 @@ export class TelegramChannel implements Channel {
           `${arg}는 베티가 모르는 모델인 거야. 사용 가능한 건 ${aliases} — 또는 claude-로 시작하는 모델 ID일까.`,
         );
       }
+    });
+
+    // Command to restart betty service or VPS (owner only)
+    this.bot.command('restart', async (ctx) => {
+      if (!OWNER_TELEGRAM_ID || ctx.from?.id.toString() !== OWNER_TELEGRAM_ID)
+        return;
+
+      const arg = (ctx.match as string | undefined)?.trim().toLowerCase() || '';
+      if (arg === 'vps') {
+        await ctx.reply('VPS를 재시작하는 거야. 좀 걸릴까.');
+        setTimeout(() => exec('shutdown -r now'), 1000);
+      } else if (arg === '' || arg === 'betty') {
+        await ctx.reply('잠깐 기다려. 베티가 다시 돌아올 거야.');
+        setTimeout(() => exec('systemctl restart betty'), 1000);
+      } else {
+        await ctx.reply(
+          '그건 모르는 명령인 거야. /restart 또는 /restart vps 로 말해.',
+        );
+      }
+    });
+
+    // Command to clear session (owner only)
+    this.bot.command('clear', async (ctx) => {
+      if (!OWNER_TELEGRAM_ID || ctx.from?.id.toString() !== OWNER_TELEGRAM_ID)
+        return;
+
+      const chatJid = `tg:${ctx.chat.id}`;
+      if (!this.opts.clearSession) return;
+
+      const folder = await this.opts.clearSession(chatJid);
+      if (folder) {
+        await ctx.reply('세션을 초기화했어. 다음 대화부터 새로 시작인 거야.');
+      } else {
+        await ctx.reply('등록된 채팅이 아닌 거야.');
+      }
+    });
+
+    // Command to show session context health
+    this.bot.command('context', async (ctx) => {
+      const chatJid = `tg:${ctx.chat.id}`;
+      if (!this.opts.getSessionInfo) return;
+
+      const info = await this.opts.getSessionInfo(chatJid);
+      if (!info) {
+        await ctx.reply('세션이 없는 거야.');
+        return;
+      }
+
+      const convIcon =
+        info.conversations >= SESSION_CRITICAL_CONVERSATIONS
+          ? '🟥'
+          : info.conversations >= SESSION_WARN_CONVERSATIONS
+            ? '⚠️'
+            : '✅';
+      const sizeIcon =
+        info.sizeMB >= SESSION_CRITICAL_SIZE_MB
+          ? '🟥'
+          : info.sizeMB >= SESSION_WARN_SIZE_MB
+            ? '⚠️'
+            : '✅';
+
+      const isCritical =
+        info.conversations >= SESSION_CRITICAL_CONVERSATIONS ||
+        info.sizeMB >= SESSION_CRITICAL_SIZE_MB;
+      const isWarn =
+        info.conversations >= SESSION_WARN_CONVERSATIONS ||
+        info.sizeMB >= SESSION_WARN_SIZE_MB;
+
+      let voice: string;
+      if (isCritical) {
+        voice = '세션이 너무 무거운 거야.';
+      } else if (isWarn) {
+        voice = '세션이 좀 무거워진 거야.';
+      } else {
+        voice = '세션은 아직 여유 있는 거야.';
+      }
+
+      const model = info.model || '기본값';
+      const lines = [
+        voice,
+        '',
+        `${convIcon} 대화: ${info.conversations}/${SESSION_CRITICAL_CONVERSATIONS}회`,
+        `${sizeIcon} 크기: ${info.sizeMB}MB/${SESSION_CRITICAL_SIZE_MB}MB`,
+        `모델: ${model}`,
+      ];
+
+      if (isCritical) {
+        lines.push('→ /clear 필수야.');
+      } else if (isWarn) {
+        lines.push('→ /clear 권장');
+      }
+
+      await ctx.reply(lines.join('\n'));
     });
 
     this.bot.on('message:text', async (ctx) => {
@@ -427,6 +538,9 @@ export class TelegramChannel implements Channel {
             { command: 'chatid', description: '채팅 ID 표시' },
             { command: 'ping', description: '봇 상태 확인' },
             { command: 'model', description: '현재 모델 표시 / 모델 변경' },
+            { command: 'restart', description: '서비스/VPS 재시작' },
+            { command: 'clear', description: '세션 초기화' },
+            { command: 'context', description: '세션 상태 확인' },
           ]);
           resolve();
         },
