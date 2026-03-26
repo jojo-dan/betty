@@ -541,13 +541,6 @@ export function deleteSession(groupFolder: string): void {
   db.prepare('DELETE FROM sessions WHERE group_folder = ?').run(groupFolder);
 }
 
-export function getMessageCount(chatJid: string): number {
-  const row = db
-    .prepare('SELECT COUNT(*) as count FROM messages WHERE chat_jid = ?')
-    .get(chatJid) as { count: number };
-  return row.count;
-}
-
 // --- Registered group accessors ---
 
 export function getRegisteredGroup(
