@@ -176,7 +176,7 @@ export class TelegramChannel implements Channel {
       const cmd = [
         "echo \"CPU:$(top -bn1 | grep 'Cpu(s)' | awk '{print $2}')\"",
         'echo "MEM:$(free -m | awk \'/Mem:/{printf \"%d/%dMB\", $3, $2}\')"',
-        "echo \"DISK:$(df -h / | awk 'NR==2{printf \"%s/%s %s\", $3, $2, $5}')\"",
+        'echo "DISK:$(df -h / | awk \'NR==2{printf "%s/%s %s", $3, $2, $5}\')"',
         'echo "UPTIME:$(uptime -p)"',
         'echo "BETTY:$(systemctl is-active betty)"',
       ].join('; ');

@@ -258,7 +258,6 @@ function buildVolumeMounts(
     readonly: false,
   });
 
-
   // Write OPENAI_API_KEY to a file so SKILL.md can read it via $(cat ...)
   // The SDK Bash tool does not expose Docker -e env vars to the shell,
   // so file-based injection is the reliable workaround.
