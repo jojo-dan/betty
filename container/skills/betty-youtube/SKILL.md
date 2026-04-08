@@ -24,24 +24,21 @@ oEmbed가 401을 반환하면(임베딩 비허용 영상) 메타데이터 없이
 
 ## 자막 추출 (youtube-transcript-api)
 
-Python의 `youtube-transcript-api` 라이브러리 + `WebshareProxyConfig`를 사용한다. Bash 도구로 아래 Python 스크립트를 실행하라.
+Python의 `youtube-transcript-api` 라이브러리 + `GenericProxyConfig`를 사용한다. Bash 도구로 아래 Python 스크립트를 실행하라.
 
 ```python
-import json, os, sys, urllib.parse
+import json, os, sys
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.proxies import WebshareProxyConfig
+from youtube_transcript_api.proxies import GenericProxyConfig
 
 video_id = sys.argv[1]
 proxy_url = os.environ.get('WEBSHARE_PROXY_URL', '')
 
 if proxy_url:
-    parsed = urllib.parse.urlparse(proxy_url)
     api = YouTubeTranscriptApi(
-        proxy_config=WebshareProxyConfig(
-            proxy_username=parsed.username or '',
-            proxy_password=parsed.password or '',
-            domain_name=parsed.hostname or '',
-            proxy_port=parsed.port or 80,
+        proxy_config=GenericProxyConfig(
+            http_url=proxy_url,
+            https_url=proxy_url,
         )
     )
 else:
