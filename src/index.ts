@@ -8,6 +8,7 @@ import {
   IDLE_TIMEOUT,
   POLL_INTERVAL,
   TIMEZONE,
+  OWNER_TELEGRAM_ID,
   TRIGGER_PATTERN,
 } from './config.js';
 import { startCredentialProxy } from './credential-proxy.js';
@@ -339,10 +340,69 @@ async function runAgent(
     }
 
     if (output.status === 'error') {
-      logger.error(
-        { group: group.name, error: output.error },
-        'Container agent error',
+      const isStaleSession = output.error?.includes(
+        'No conversation found with session ID',
       );
+
+      if (isStaleSession) {
+        logger.warn(
+          { group: group.name, error: output.error },
+          'Session recovery triggered',
+        );
+
+        deleteSession(group.folder);
+        delete sessions[group.folder];
+        logger.info(
+          { groupFolder: group.folder },
+          'Session deleted for recovery',
+        );
+
+        const debugPath = path.join(
+          DATA_DIR,
+          'sessions',
+          group.folder,
+          '.claude',
+          'debug',
+        );
+        try {
+          fs.rmSync(debugPath, { recursive: true, force: true });
+          fs.mkdirSync(debugPath, { recursive: true });
+          logger.info(
+            { groupFolder: group.folder },
+            'Debug cache cleared for recovery',
+          );
+        } catch (debugErr) {
+          logger.warn(
+            { groupFolder: group.folder, err: debugErr },
+            'Failed to clear debug cache',
+          );
+        }
+
+        if (OWNER_TELEGRAM_ID) {
+          const ownerJid = `tg:${OWNER_TELEGRAM_ID}`;
+          const ownerChannel = findChannel(channels, ownerJid);
+          if (ownerChannel) {
+            try {
+              await ownerChannel.sendMessage(
+                ownerJid,
+                `[세션 복구] ${group.name} — stale session 감지, 자동 복구 완료.`,
+              );
+              logger.info('Recovery notification sent to owner');
+            } catch (dmErr) {
+              logger.warn(
+                { err: dmErr },
+                'Failed to send recovery notification',
+              );
+            }
+          }
+        }
+      } else {
+        logger.error(
+          { group: group.name, error: output.error },
+          'Container agent error',
+        );
+      }
+
       return 'error';
     }
 
