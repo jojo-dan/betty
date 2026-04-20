@@ -20,6 +20,7 @@ import { exec } from 'child_process';
 import { BETTY_DASHBOARD_SECRET } from './config.js';
 import { logger } from './logger.js';
 import { getAllTasks, getRecentMessages } from './db.js';
+import { formatUptime2Units } from './dashboard-format.js';
 
 // ---------------------------------------------------------------------------
 // Shared interfaces (mirror of dashboard/src/lib/data/dashboard.ts)
@@ -395,9 +396,9 @@ function execVpsMetrics(): Promise<{
         }
       }
 
-      // UPTIME
+      // UPTIME — Linux `uptime -p` 원문을 한국어 축약 2단위로 변환(v1.2.0).
       const uptimeRaw = get('UPTIME');
-      const uptimeDisplay = uptimeRaw || 'N/A';
+      const uptimeDisplay = uptimeRaw ? formatUptime2Units(uptimeRaw) : 'N/A';
 
       // BETTY
       const bettyRaw = get('BETTY');
@@ -570,11 +571,7 @@ async function handleHistory(): Promise<{ entries: HistoryEntrySnapshot[] }> {
 // HTTP server
 // ---------------------------------------------------------------------------
 
-function sendJson(
-  res: ServerResponse,
-  status: number,
-  body: unknown,
-): void {
+function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
     'Content-Type': 'application/json',
