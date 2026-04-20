@@ -84,6 +84,18 @@ interface VPSMetricSnapshot {
   badgeLabel: string;
 }
 
+interface VPSDetails {
+  activeEnterTimestamp?: string;
+  statusSnapshot?: string;
+  cacheTtlRemainingMs?: number;
+}
+
+interface VPSResponse {
+  metrics: VPSMetricSnapshot[];
+  generatedAt: string;
+  details?: VPSDetails;
+}
+
 interface HistoryResult {
   kind: 'task-done' | 'outbox-processed' | 'message';
   output?: string;
@@ -106,7 +118,11 @@ interface HistoryEntrySnapshot {
 // ---------------------------------------------------------------------------
 
 interface VpsCache {
-  data: { metrics: VPSMetricSnapshot[]; generatedAt: string };
+  data: {
+    metrics: VPSMetricSnapshot[];
+    generatedAt: string;
+    details?: VPSDetails;
+  };
   ts: number;
 }
 
@@ -336,30 +352,42 @@ function readJsonFiles(dir: string, maxItems: number): QueueItemSummary[] {
 // Handler: /api/dashboard/vps
 // ---------------------------------------------------------------------------
 
-async function handleVps(): Promise<{
-  metrics: VPSMetricSnapshot[];
-  generatedAt: string;
-}> {
+async function handleVps(): Promise<VPSResponse> {
+  const now = Date.now();
   const cached = vpsCache.get('vps');
-  if (cached && Date.now() - cached.ts < VPS_CACHE_TTL_MS) {
-    return cached.data;
+  if (cached && now - cached.ts < VPS_CACHE_TTL_MS) {
+    return {
+      ...cached.data,
+      details: {
+        ...(cached.data.details ?? {}),
+        cacheTtlRemainingMs: Math.max(
+          0,
+          VPS_CACHE_TTL_MS - (now - cached.ts),
+        ),
+      },
+    };
   }
 
   const result = await execVpsMetrics();
   vpsCache.set('vps', { data: result, ts: Date.now() });
-  return result;
+  // 새로 갱신한 시점이라 남은 TTL은 전체.
+  return {
+    ...result,
+    details: {
+      ...(result.details ?? {}),
+      cacheTtlRemainingMs: VPS_CACHE_TTL_MS,
+    },
+  };
 }
 
-function execVpsMetrics(): Promise<{
-  metrics: VPSMetricSnapshot[];
-  generatedAt: string;
-}> {
+function execVpsMetrics(): Promise<VPSResponse> {
   const cmd = [
     "echo \"CPU:$(top -bn1 | grep 'Cpu(s)' | awk '{print $2}')\"",
     'echo "MEM:$(free -m | awk \'/Mem:/{printf \"%d/%dMB\", $3, $2}\')"',
     'echo "DISK:$(df -h / | awk \'NR==2{printf "%s/%s %s", $3, $2, $5}\')"',
     'echo "UPTIME:$(uptime -p)"',
     'echo "BETTY:$(systemctl is-active betty)"',
+    'echo "RESTART:$(systemctl show betty --property=ActiveEnterTimestamp --value 2>/dev/null | head -1)"',
   ].join('; ');
 
   return new Promise((resolve) => {
@@ -548,7 +576,25 @@ function execVpsMetrics(): Promise<{
         },
       ];
 
-      resolve({ metrics, generatedAt });
+      // details: 인라인 펼침용 재시작 시각·/status 스냅샷 (v1.2.0).
+      const restartRaw = get('RESTART');
+      const activeEnterTimestamp = restartRaw ? restartRaw : undefined;
+      const statusSnapshot = [
+        `CPU ${cpuDisplay}% · ${cpuBadge}`,
+        `메모리 ${memDisplay}${memTrend ? ` (${memTrend})` : ''} · ${memBadge}`,
+        `디스크 ${diskDisplay}${diskTrend ? ` (${diskTrend})` : ''} · ${diskBadge}`,
+        `uptime ${uptimeDisplay}`,
+        `systemctl ${bettyDisplay} · ${bettyBadge}`,
+      ].join('\n');
+
+      resolve({
+        metrics,
+        generatedAt,
+        details: {
+          activeEnterTimestamp,
+          statusSnapshot,
+        },
+      });
     });
   });
 }
