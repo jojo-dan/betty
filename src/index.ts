@@ -3,6 +3,7 @@ import path from 'path';
 
 import {
   ASSISTANT_NAME,
+  BETTY_DASHBOARD_PORT,
   CREDENTIAL_PROXY_PORT,
   DATA_DIR,
   IDLE_TIMEOUT,
@@ -12,6 +13,7 @@ import {
   TRIGGER_PATTERN,
 } from './config.js';
 import { startCredentialProxy } from './credential-proxy.js';
+import { startDashboardApi } from './dashboard-api.js';
 import './channels/index.js';
 import {
   getChannelFactory,
@@ -557,10 +559,14 @@ async function main(): Promise<void> {
     PROXY_BIND_HOST,
   );
 
+  // Start dashboard API (read-only VPS state for betty Dashboard v1.x)
+  const dashboardApiServer = await startDashboardApi(BETTY_DASHBOARD_PORT);
+
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {
     logger.info({ signal }, 'Shutdown signal received');
     proxyServer.close();
+    dashboardApiServer.close();
     await queue.shutdown(10000);
     for (const ch of channels) await ch.disconnect();
     process.exit(0);

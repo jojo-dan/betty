@@ -10,6 +10,8 @@ const envConfig = readEnvFile([
   'ASSISTANT_NAME',
   'ASSISTANT_HAS_OWN_NUMBER',
   'OWNER_TELEGRAM_ID',
+  'BETTY_DASHBOARD_SECRET',
+  'BETTY_DASHBOARD_PORT',
 ]);
 
 export const ASSISTANT_NAME =
@@ -85,3 +87,13 @@ export const SESSION_CRITICAL_SIZE_MB = 50;
 // Uses system timezone by default
 export const TIMEZONE =
   process.env.TZ || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+// Dashboard API secret (shared with Vercel via env). Must be non-empty in production.
+export const BETTY_DASHBOARD_SECRET =
+  process.env.BETTY_DASHBOARD_SECRET || envConfig.BETTY_DASHBOARD_SECRET || '';
+
+// Dashboard API port (default 8318, bind on 127.0.0.1)
+export const BETTY_DASHBOARD_PORT = parseInt(
+  process.env.BETTY_DASHBOARD_PORT || envConfig.BETTY_DASHBOARD_PORT || '8318',
+  10,
+);
