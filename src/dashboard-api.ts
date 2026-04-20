@@ -19,11 +19,7 @@ import { exec } from 'child_process';
 
 import { BETTY_DASHBOARD_SECRET } from './config.js';
 import { logger } from './logger.js';
-import {
-  getAllTasks,
-  getMessagesBySkillId,
-  getRecentMessages,
-} from './db.js';
+import { getAllTasks, getMessagesBySkillId, getRecentMessages } from './db.js';
 import {
   extractSkillBody,
   extractSpecLinks,
@@ -48,11 +44,19 @@ interface SkillSummary {
   recentCalls: SkillCall[];
 }
 
+interface QueueItemDetail {
+  action?: string;
+  targetPath?: string;
+  prompt?: string;
+  createdAt?: string;
+}
+
 interface QueueItemSummary {
   id: string;
   primary: string;
   secondary: string;
   trailingLabel?: string;
+  detail?: QueueItemDetail;
 }
 
 interface QueueSectionSnapshot {
@@ -206,6 +210,12 @@ async function handleQueue(): Promise<QueueSnapshot> {
             minute: '2-digit',
           })
         : undefined,
+      detail: {
+        action: t.schedule_type,
+        targetPath: t.group_folder,
+        prompt: t.prompt,
+        createdAt: t.created_at,
+      },
     }));
 
   const scheduledNextLabel =
@@ -269,6 +279,7 @@ function readJsonFiles(dir: string, maxItems: number): QueueItemSummary[] {
     const fpath = path.join(dir, f.name);
     const stat = fs.statSync(fpath);
     let label: string | undefined;
+    let detail: QueueItemDetail | undefined;
     try {
       const raw = fs.readFileSync(fpath, 'utf-8');
       const parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -279,6 +290,23 @@ function readJsonFiles(dir: string, maxItems: number): QueueItemSummary[] {
             ? parsed['type']
             : undefined;
       label = action;
+
+      const pickString = (key: string): string | undefined =>
+        typeof parsed[key] === 'string' ? (parsed[key] as string) : undefined;
+
+      detail = {
+        action,
+        // target_path 키가 있으면 우선, 없으면 title_hint(outbox) 등 대체
+        targetPath:
+          pickString('target_path') ??
+          pickString('targetPath') ??
+          pickString('title_hint'),
+        prompt: pickString('prompt') ?? pickString('content'),
+        createdAt:
+          pickString('created') ??
+          pickString('created_at') ??
+          pickString('schedule_value'),
+      };
     } catch {
       /* ignore parse errors */
     }
@@ -290,6 +318,7 @@ function readJsonFiles(dir: string, maxItems: number): QueueItemSummary[] {
         hour: '2-digit',
         minute: '2-digit',
       }),
+      detail,
     };
   });
 }
