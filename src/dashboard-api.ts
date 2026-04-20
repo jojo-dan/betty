@@ -84,12 +84,21 @@ interface VPSMetricSnapshot {
   badgeLabel: string;
 }
 
+interface HistoryResult {
+  kind: 'task-done' | 'outbox-processed' | 'message';
+  output?: string;
+  notePath?: string;
+}
+
 interface HistoryEntrySnapshot {
   id: string;
   timestamp: string;
   source: 'messages' | 'task' | 'outbox';
   primary: string;
   secondary: string;
+  skillId?: string;
+  full?: string;
+  result?: HistoryResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -561,6 +570,9 @@ async function handleHistory(): Promise<{ entries: HistoryEntrySnapshot[] }> {
         source: 'messages',
         primary: m.content.slice(0, 80),
         secondary: `${m.sender} · ${m.chat_jid}`,
+        skillId: m.skill_id ?? undefined,
+        full: m.content,
+        result: { kind: 'message' },
       });
     }
   } catch (err) {
@@ -583,6 +595,11 @@ async function handleHistory(): Promise<{ entries: HistoryEntrySnapshot[] }> {
         source: 'task',
         primary: t.prompt.slice(0, 80),
         secondary: `scheduled_tasks · ${t.group_folder}`,
+        full: t.prompt,
+        result: {
+          kind: 'task-done',
+          output: t.last_result ?? undefined,
+        },
       });
     }
   } catch (err) {
@@ -617,12 +634,34 @@ async function handleHistory(): Promise<{ entries: HistoryEntrySnapshot[] }> {
       .slice(0, 20);
 
     for (const f of jsonFiles) {
+      let full: string | undefined;
+      let notePath: string | undefined;
+      try {
+        const raw = fs.readFileSync(path.join(processedDir, f.name), 'utf-8');
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        if (typeof parsed['content'] === 'string') {
+          full = parsed['content'] as string;
+        }
+        const pickString = (key: string): string | undefined =>
+          typeof parsed[key] === 'string' ? (parsed[key] as string) : undefined;
+        notePath =
+          pickString('target_path') ??
+          pickString('targetPath') ??
+          pickString('title_hint');
+      } catch {
+        /* ignore — fallback to file name */
+      }
       entries.push({
         id: `outbox-${f.name.replace('.json', '')}`,
         timestamp: new Date(f.mtime).toISOString(),
         source: 'outbox',
         primary: f.name.replace('.json', ''),
         secondary: 'vault-outbox/processed/',
+        full,
+        result: {
+          kind: 'outbox-processed',
+          notePath,
+        },
       });
     }
   } catch (err) {
