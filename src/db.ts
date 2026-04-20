@@ -139,6 +139,17 @@ function createSchema(database: Database.Database): void {
   } catch {
     /* columns already exist */
   }
+
+  // Add skill_id column if it doesn't exist (v1.2.0 Dashboard — skill 역매핑).
+  // 현재 사이클은 스키마/shape만 준비하고 실제 기록은 차기 사이클에서 도입한다.
+  try {
+    database.exec(`ALTER TABLE messages ADD COLUMN skill_id TEXT`);
+    database.exec(
+      `CREATE INDEX IF NOT EXISTS idx_messages_skill_id ON messages(skill_id)`,
+    );
+  } catch {
+    /* column already exists */
+  }
 }
 
 export function initDatabase(): void {
@@ -262,7 +273,7 @@ export function setLastGroupSync(): void {
  */
 export function storeMessage(msg: NewMessage): void {
   db.prepare(
-    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, skill_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     msg.id,
     msg.chat_jid,
@@ -272,6 +283,7 @@ export function storeMessage(msg: NewMessage): void {
     msg.timestamp,
     msg.is_from_me ? 1 : 0,
     msg.is_bot_message ? 1 : 0,
+    msg.skill_id ?? null,
   );
 }
 
@@ -287,9 +299,10 @@ export function storeMessageDirect(msg: {
   timestamp: string;
   is_from_me: boolean;
   is_bot_message?: boolean;
+  skill_id?: string | null;
 }): void {
   db.prepare(
-    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, skill_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     msg.id,
     msg.chat_jid,
@@ -299,6 +312,7 @@ export function storeMessageDirect(msg: {
     msg.timestamp,
     msg.is_from_me ? 1 : 0,
     msg.is_bot_message ? 1 : 0,
+    msg.skill_id ?? null,
   );
 }
 
@@ -361,6 +375,40 @@ export function getMessagesSince(
   return db
     .prepare(sql)
     .all(chatJid, sinceTimestamp, `${botPrefix}:%`, limit) as NewMessage[];
+}
+
+/**
+ * Get the most recent N messages across all chats, ordered newest first.
+ * Used by Dashboard API /history endpoint. Does not filter by chat_jid.
+ */
+export function getRecentMessages(limit: number): NewMessage[] {
+  const sql = `
+    SELECT id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, skill_id
+    FROM messages
+    WHERE is_bot_message = 0 AND content != '' AND content IS NOT NULL
+    ORDER BY timestamp DESC
+    LIMIT ?
+  `;
+  return db.prepare(sql).all(limit) as NewMessage[];
+}
+
+/**
+ * Get the most recent N messages produced by a specific skill, ordered newest first.
+ * Dashboard `/api/dashboard/skills` uses this to populate SkillSummary.recentCalls.
+ * v1.2.0 현재 skill_id 기록 경로가 미구현 상태이므로 결과가 빈 배열일 수 있다.
+ */
+export function getMessagesBySkillId(
+  skillId: string,
+  limit: number,
+): NewMessage[] {
+  const sql = `
+    SELECT id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, skill_id
+    FROM messages
+    WHERE skill_id = ?
+    ORDER BY timestamp DESC
+    LIMIT ?
+  `;
+  return db.prepare(sql).all(skillId, limit) as NewMessage[];
 }
 
 export function createTask(

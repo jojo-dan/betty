@@ -6,8 +6,10 @@ import {
   deleteTask,
   getAllChats,
   getAllRegisteredGroups,
+  getMessagesBySkillId,
   getMessagesSince,
   getNewMessages,
+  getRecentMessages,
   getTaskById,
   setRegisteredGroup,
   storeChatMetadata,
@@ -480,5 +482,99 @@ describe('registered group isMain', () => {
     const group = groups['group@g.us'];
     expect(group).toBeDefined();
     expect(group.isMain).toBeUndefined();
+  });
+});
+
+// --- messages.skill_id (v1.2.0 Dashboard 역매핑) ---
+
+describe('messages.skill_id', () => {
+  it('stores and retrieves skill_id via getRecentMessages', () => {
+    storeChatMetadata('tg:777', '2026-04-20T00:00:00.000Z');
+    storeMessage({
+      id: 'msg-with-skill',
+      chat_jid: 'tg:777',
+      sender: 'tg:777',
+      sender_name: 'Owner',
+      content: 'skill-tagged message',
+      timestamp: '2026-04-20T00:00:01.000Z',
+      skill_id: 'betty-vault',
+    });
+
+    const recent = getRecentMessages(10);
+    expect(recent).toHaveLength(1);
+    expect(recent[0].skill_id).toBe('betty-vault');
+  });
+
+  it('defaults skill_id to null when not supplied', () => {
+    storeChatMetadata('tg:777', '2026-04-20T00:00:00.000Z');
+    storeMessage({
+      id: 'msg-no-skill',
+      chat_jid: 'tg:777',
+      sender: 'tg:777',
+      sender_name: 'Owner',
+      content: 'no skill tag',
+      timestamp: '2026-04-20T00:00:02.000Z',
+    });
+
+    const recent = getRecentMessages(10);
+    expect(recent).toHaveLength(1);
+    expect(recent[0].skill_id).toBeNull();
+  });
+
+  it('getMessagesBySkillId returns only matching skill_id ordered newest first', () => {
+    storeChatMetadata('tg:777', '2026-04-20T00:00:00.000Z');
+    storeMessage({
+      id: 'msg-a',
+      chat_jid: 'tg:777',
+      sender: 'tg:777',
+      sender_name: 'Owner',
+      content: 'vault 1',
+      timestamp: '2026-04-20T00:00:01.000Z',
+      skill_id: 'betty-vault',
+    });
+    storeMessage({
+      id: 'msg-b',
+      chat_jid: 'tg:777',
+      sender: 'tg:777',
+      sender_name: 'Owner',
+      content: 'vault 2',
+      timestamp: '2026-04-20T00:00:03.000Z',
+      skill_id: 'betty-vault',
+    });
+    storeMessage({
+      id: 'msg-c',
+      chat_jid: 'tg:777',
+      sender: 'tg:777',
+      sender_name: 'Owner',
+      content: 'voice 1',
+      timestamp: '2026-04-20T00:00:02.000Z',
+      skill_id: 'betty-voice',
+    });
+    storeMessage({
+      id: 'msg-d',
+      chat_jid: 'tg:777',
+      sender: 'tg:777',
+      sender_name: 'Owner',
+      content: 'no skill',
+      timestamp: '2026-04-20T00:00:04.000Z',
+    });
+
+    const vaultMessages = getMessagesBySkillId('betty-vault', 10);
+    expect(vaultMessages.map((m) => m.id)).toEqual(['msg-b', 'msg-a']);
+
+    const voiceMessages = getMessagesBySkillId('betty-voice', 10);
+    expect(voiceMessages.map((m) => m.id)).toEqual(['msg-c']);
+
+    const missing = getMessagesBySkillId('betty-unknown', 10);
+    expect(missing).toHaveLength(0);
+  });
+
+  it('migration is idempotent when re-running createSchema', () => {
+    // _initTestDatabase already ran createSchema once. A second schema init on the
+    // same process must not throw due to the duplicate ALTER TABLE inside the
+    // try/catch in createSchema (simulating the VPS restart path where a DB
+    // already has the skill_id column).
+    expect(() => _initTestDatabase()).not.toThrow();
+    expect(() => _initTestDatabase()).not.toThrow();
   });
 });
