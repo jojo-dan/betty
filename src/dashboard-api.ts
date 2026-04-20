@@ -19,17 +19,33 @@ import { exec } from 'child_process';
 
 import { BETTY_DASHBOARD_SECRET } from './config.js';
 import { logger } from './logger.js';
-import { getAllTasks, getRecentMessages } from './db.js';
-import { formatUptime2Units } from './dashboard-format.js';
+import {
+  getAllTasks,
+  getMessagesBySkillId,
+  getRecentMessages,
+} from './db.js';
+import {
+  extractSkillBody,
+  extractSpecLinks,
+  formatUptime2Units,
+} from './dashboard-format.js';
 
 // ---------------------------------------------------------------------------
 // Shared interfaces (mirror of dashboard/src/lib/data/dashboard.ts)
 // ---------------------------------------------------------------------------
 
+interface SkillCall {
+  entryId: string;
+  ts: string;
+}
+
 interface SkillSummary {
   id: string;
   name: string;
   description: string;
+  body: string;
+  specLinks: string[];
+  recentCalls: SkillCall[];
 }
 
 interface QueueItemSummary {
@@ -105,12 +121,13 @@ async function handleSkills(): Promise<{ skills: SkillSummary[] }> {
 
     const skillMdPath = path.join(skillsDir, dirent.name, 'SKILL.md');
     let description = '';
+    let body = '';
+    let specLinks: string[] = [];
 
     try {
       const content = fs.readFileSync(skillMdPath, 'utf-8');
-      // Try frontmatter description first
-      const fmMatch = content.match(/^---\n[\s\S]*?^---\n([\s\S]*)/m);
-      const bodyText = fmMatch ? fmMatch[1] : content;
+      body = extractSkillBody(content);
+      specLinks = extractSpecLinks(content);
 
       // Try explicit "description:" key in frontmatter
       const descKey = content.match(/^description:\s*(.+)$/m);
@@ -118,7 +135,7 @@ async function handleSkills(): Promise<{ skills: SkillSummary[] }> {
         description = descKey[1].trim();
       } else {
         // Fall back to first non-empty paragraph in body
-        const firstParagraph = bodyText
+        const firstParagraph = body
           .split(/\n{2,}/)
           .map((p) => p.replace(/^#+\s+/, '').trim())
           .find((p) => p.length > 0);
@@ -130,12 +147,34 @@ async function handleSkills(): Promise<{ skills: SkillSummary[] }> {
       }
     } catch {
       description = '';
+      body = '';
+      specLinks = [];
+    }
+
+    // recentCalls: messages 테이블의 skill_id 역매핑(Top 10).
+    // v1.2.0 현재 skill_id 기록 경로는 옵션 I(null 유지)로 빈 배열 반환이
+    // 일반적이지만, 실 데이터가 들어오면 자동으로 채워진다.
+    let recentCalls: SkillCall[] = [];
+    try {
+      const rows = getMessagesBySkillId(dirent.name, 10);
+      recentCalls = rows.map((r) => ({
+        entryId: `msg-${r.id}`,
+        ts: r.timestamp,
+      }));
+    } catch (err) {
+      logger.warn(
+        { err, skill: dirent.name },
+        'Dashboard API: skill recentCalls query failed',
+      );
     }
 
     skills.push({
       id: dirent.name,
       name: dirent.name,
       description: description.slice(0, 200),
+      body,
+      specLinks,
+      recentCalls,
     });
   }
 

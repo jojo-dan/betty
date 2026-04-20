@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 
-import { formatUptime2Units } from './dashboard-format.js';
+import {
+  extractSkillBody,
+  extractSpecLinks,
+  formatUptime2Units,
+} from './dashboard-format.js';
 
 describe('formatUptime2Units', () => {
   it('선두 2단위만 취한다 (주+일)', () => {
@@ -50,5 +54,57 @@ describe('formatUptime2Units', () => {
     expect(formatUptime2Units('up 2 years, 6 months, 3 weeks, 4 days')).toBe(
       '2년 6개월',
     );
+  });
+});
+
+describe('extractSkillBody', () => {
+  it('frontmatter 제거 후 본문 반환', () => {
+    const raw = '---\ntrigger: foo\n---\n\n# betty-vault\n\n본문 내용';
+    expect(extractSkillBody(raw)).toBe('# betty-vault\n\n본문 내용');
+  });
+
+  it('frontmatter가 없으면 원문 그대로 반환(선두 공백만 제거)', () => {
+    const raw = '\n\n# heading\n\n본문';
+    expect(extractSkillBody(raw)).toBe('# heading\n\n본문');
+  });
+
+  it('빈 입력은 빈 문자열', () => {
+    expect(extractSkillBody('')).toBe('');
+  });
+
+  it('여러 줄 frontmatter도 정상 제거', () => {
+    const raw =
+      '---\nname: betty-test\ndescription: desc\ntrigger: trig\n---\nHello';
+    expect(extractSkillBody(raw)).toBe('Hello');
+  });
+});
+
+describe('extractSpecLinks', () => {
+  it('docs/specs/*.md 패턴을 전수 추출하고 중복 제거', () => {
+    const raw = `
+      see docs/specs/vault-integration.md for details,
+      and also docs/specs/vault-integration.md again,
+      plus docs/specs/media-pipeline.md and
+      docs/specs/telegram-commands.md.
+    `;
+    expect(extractSpecLinks(raw)).toEqual([
+      'docs/specs/media-pipeline.md',
+      'docs/specs/telegram-commands.md',
+      'docs/specs/vault-integration.md',
+    ]);
+  });
+
+  it('매칭되는 경로가 없으면 빈 배열', () => {
+    expect(extractSpecLinks('no references here')).toEqual([]);
+  });
+
+  it('빈 입력은 빈 배열', () => {
+    expect(extractSpecLinks('')).toEqual([]);
+  });
+
+  it('하이픈 포함 소문자 파일명 허용', () => {
+    expect(
+      extractSpecLinks('see docs/specs/youtube-analysis.md and docs/specs/dashboard.md'),
+    ).toEqual(['docs/specs/dashboard.md', 'docs/specs/youtube-analysis.md']);
   });
 });

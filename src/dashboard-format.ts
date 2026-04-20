@@ -1,6 +1,44 @@
 // 순수 유틸 — Dashboard API 응답에 쓰는 포맷터. 외부 의존성 없음.
 
 /**
+ * SKILL.md 원문에서 frontmatter(--- … ---)를 제거한 본문 마크다운을 반환한다.
+ * Dashboard /api/dashboard/skills 응답 SkillSummary.body 생성에 사용.
+ *
+ * - frontmatter가 없으면 원문을 그대로 반환한다.
+ * - 선두 공백은 trim하여 본문 첫 헤딩이 바로 보이도록 정리한다.
+ * - 본문 길이 제한은 두지 않는다 (UI에서 인라인 펼침 내부 스크롤로 처리).
+ */
+export function extractSkillBody(raw: string): string {
+  if (!raw) return '';
+  const fmMatch = raw.match(/^---\n[\s\S]*?^---\n([\s\S]*)/m);
+  const body = fmMatch ? fmMatch[1] : raw;
+  return body.replace(/^\s+/, '').trimEnd();
+}
+
+/**
+ * SKILL.md 원문에서 `docs/specs/{name}.md` 패턴의 참조 경로를 전수 추출한다.
+ * Dashboard 응답 SkillSummary.specLinks 생성에 사용한다.
+ *
+ * - 중복 제거.
+ * - 경로 패턴: `docs/specs/<lowercase-hyphen>.md` (영문 소문자·숫자·하이픈 허용).
+ * - 매칭되지 않으면 빈 배열.
+ *
+ * SKILL.md frontmatter에는 별도 specLinks 키가 관례상 존재하지 않으므로
+ * 본문·코드블럭·마크다운 링크 어디든 해당 패턴을 스캔해 수집한다.
+ */
+export function extractSpecLinks(raw: string): string[] {
+  if (!raw) return [];
+  const found = new Set<string>();
+  const re = /docs\/specs\/[a-z0-9][a-z0-9-]*\.md/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw)) !== null) {
+    found.add(m[0]);
+  }
+  return Array.from(found).sort();
+}
+
+
+/**
  * Linux `uptime -p` 출력(영문)을 한국어 축약 2단위로 변환한다.
  * Dashboard VPS 섹션 uptime MetricCard 기본 표기에 사용.
  *
@@ -37,7 +75,10 @@ export function formatUptime2Units(raw: string): string {
     { pattern: /^seconds?$/i, korean: '초' },
   ];
 
-  const segments = body.split(',').map((s) => s.trim()).filter(Boolean);
+  const segments = body
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (segments.length === 0) return trimmed;
 
   const parsed: Array<{ value: number; korean: string }> = [];
