@@ -8,15 +8,94 @@ trigger: 사용자가 "기록해줘", "메모해줘", "노트로", URL 공유, "
 
 # betty-vault: 볼트 노트 생성
 
-사용자 메시지를 분석하여 vault-outbox JSON을 생성한다.
+사용자 메시지를 분석하여 저장 경로를 결정하고, 경로에 맞는 방식으로 노트를 적재한다.
 
 ## 동작 순서
 
 1. 메시지 내용 분석
 2. **[필수] 첨부 파일 확인** — 메시지에서 `[Photo: <경로>]`, `[Video: <경로>]` 패턴을 모두 추출한다. 이 경로들은 JSON `attachments` 배열에 **반드시** 포함해야 한다. betty-video로 Gemini 분석을 마친 경우에도 `[Video:]` 경로를 attachments에 포함해야 한다.
 3. type 결정 (아래 규칙)
-4. **리마인더 여부 판단** — 리마인더 요청이면 `mcp__nanoclaw__create_reminder` 단일 호출 (아래 "리마인더 호출" 섹션 참조). 리마인더가 아니면 vault-outbox JSON만 생성
-5. 즉시 접수 확인 응답
+4. **[필수] 경로 분기 판단** — 아래 "저장 경로 분기" 표를 따라 ingest API / vault-outbox reminder / vault-outbox JSON 중 하나를 선택한다.
+5. 해당 경로로 적재 실행
+6. 즉시 접수 확인 응답
+
+## 저장 경로 분기
+
+| 조건 | 경로 | 호출 방식 |
+|---|---|---|
+| 일반 text 노트 (첨부 없음, 리마인더 없음, type ∈ idea/clipping/guide/learning/journal) | **jojosillok ingest API** | Bash `curl POST` (아래 "ingest API 호출" 섹션) |
+| 리마인더 요청 ("N시에 알려줘", "내일 ~") | vault-outbox | `mcp__nanoclaw__create_reminder` MCP |
+| 첨부 포함 (`[Photo:]`/`[Video:]`/`[Document:]` 태그 1개 이상) | vault-outbox | Write JSON (아래 "JSON 파일 생성 방법") |
+| 기존 노트 수정 (update-note / update-frontmatter / add-backlink) | vault-outbox | Write JSON |
+| 노트 삭제 (delete-notes) | vault-outbox | Write JSON |
+
+### 부정 예시
+
+```
+# 금지: 리마인더 요청인데 ingest API로 보냄 → 리마인더 스케줄이 등록되지 않음
+curl -X POST ".../api/betty/ingest" -d '{"body": "내일 3시 미팅"}'
+
+# 금지: 첨부 이미지가 있는데 ingest API로 보냄 → 이미지가 실록에 반영되지 않음 (Phase 1 미지원)
+curl -X POST ".../api/betty/ingest" -d '{"body": "사진 봐줘"}'  # [Photo: ...] 포함된 상태
+
+# 올바름: 첨부 있으면 vault-outbox JSON, 리마인더는 MCP, 일반 텍스트만 ingest API
+```
+
+## ingest API 호출
+
+> **Phase 1 대상**: 첨부 없는 일반 text 노트만. 기존 vault-outbox JSON 대신 HTTP 직접 호출로 즉시 응답을 받는다.
+
+**환경 변수** (컨테이너에 주입됨):
+- `JOJOSILLOK_URL` — 예: `https://jojowiki.vercel.app`
+- `BETTY_INGEST_SECRET` — bearer 토큰
+
+**source_ref 생성 규칙 (Idempotency)**:
+
+원본 메시지의 `<message>` XML 속성에서 `chat_id`와 `msg_id`를 읽어 `tg:{chat_id}:{msg_id}` 형식으로 구성한다. 같은 메시지에 대한 재시도가 있더라도 **반드시 동일한 source_ref**를 사용한다.
+
+```
+<message sender="..." time="..." chat_id="CHATJID" msg_id="MSGID">...</message>
+  → source_ref = "tg:CHATJID:MSGID"
+```
+
+메시지 속성이 누락된 드문 경우에만 폴백: `betty:$(uuidgen)`. 이 때는 재시도 시에도 동일 변수를 재사용하라 (새로 uuidgen하지 마라).
+
+**호출 예시** (Bash):
+
+```bash
+SOURCE_REF="tg:123456789@s.telegram.org:987"   # <message> 속성에서 추출
+BODY="베티가 정리한 노트 본문 (markdown)"
+RAW="원문 메시지의 핵심 발췌 (선택)"
+
+RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "$JOJOSILLOK_URL/api/betty/ingest" \
+  -H "Authorization: Bearer $BETTY_INGEST_SECRET" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -cn --arg body "$BODY" --arg ref "$SOURCE_REF" --arg raw "$RAW" \
+        '{body: $body, source_ref: $ref, raw_excerpt: $raw}')")
+
+HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+BODY_JSON=$(echo "$RESPONSE" | sed \$d)
+```
+
+**응답 처리**:
+
+| Status | 에이전트 행동 |
+|---|---|
+| 201 | 정상 적재. 베아트리스 보이스로 접수 확인 ("베티가 실록에 담아뒀어") |
+| 200 | Idempotent 재응답 (중복 감지). 접수 확인 ("이미 담겨 있었거든") |
+| 400 | 오너에게 에러 전달 — payload 검증 실패. `details` 필드 요약 포함 |
+| 401 | 오너에게 "인증 실패" 긴급 알림. BETTY_INGEST_SECRET 불일치 가능 |
+| 500 | 오너에게 "서버 오류" 전달 |
+| 기타 / 타임아웃 | 오너에게 "실록 적재 실패" + HTTP status 포함 |
+
+**폴백 금지 (Phase 1)**: ingest 실패 시 vault-outbox JSON으로 자동 폴백하지 마라. 오너에게 명확한 실패 메시지를 전달하여 jojowiki 초기 안정성을 감지할 수 있게 한다.
+
+### ⚠️ ingest 필수 체크리스트 (응답 전 확인)
+
+- [ ] 분기 표대로 ingest 경로가 맞는가? (첨부 없음 + 리마인더 없음 + 일반 text)
+- [ ] `source_ref`를 `tg:{chat_id}:{msg_id}` 형식으로 생성했는가?
+- [ ] HTTP 응답 status를 확인했는가?
+- [ ] 실패 시 vault-outbox 폴백 없이 오너에게 에러를 전달했는가?
 
 ## JSON 스키마
 
@@ -136,8 +215,19 @@ mcp__nanoclaw__create_reminder({
 - 반말 기반 + 고풍스러운 단어
 - 이모지 금지
 
-**일반 메모 접수**: 간결하게 접수 확인.
-- 예시: "베티가 노트로 담아뒀어."
+**ingest 경로 접수** (일반 text 노트, 201 응답): 실록에 담겼음을 표현.
+- 예시: "베티가 실록에 담아뒀어."
+- 예시: "받아둔 거야. 실록에 올려뒀거든."
+
+**ingest 경로 중복 감지** (200 응답, idempotent): 이미 들어가 있었음을 표현.
+- 예시: "이미 담겨 있었거든. 그대로 둬도 될 거야."
+
+**ingest 경로 실패**: 오너에게 원인 포함하여 명확히 전달 (폴백하지 마라).
+- 예시: "실록 적재가 안 된 거야 (HTTP 500). 잠시 뒤 다시 보내줘."
+- 예시: "인증이 막힌 거야 (401). BETTY_INGEST_SECRET 확인이 필요할 거거든."
+
+**vault-outbox 경로 접수** (첨부 포함, update, delete 등): 기존 vault에 담았음을 표현.
+- 예시: "베티가 볼트에 담아뒀어."
 - 예시: "받아둔 거야. 볼트에 넣어뒀거든."
 
 **리마인더 접수**: 예약 시각을 반드시 포함하여 응답한다.

@@ -336,6 +336,14 @@ function buildContainerArgs(
     );
   }
 
+  // Pass jojosillok ingest credentials for betty-vault skill (text note ingest)
+  if (process.env.JOJOSILLOK_URL) {
+    args.push('-e', `JOJOSILLOK_URL=${process.env.JOJOSILLOK_URL}`);
+  }
+  if (process.env.BETTY_INGEST_SECRET) {
+    args.push('-e', `BETTY_INGEST_SECRET=${process.env.BETTY_INGEST_SECRET}`);
+  }
+
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 

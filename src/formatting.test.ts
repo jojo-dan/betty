@@ -68,6 +68,24 @@ describe('formatMessages', () => {
     expect(result).toContain('Jan 1, 2024');
   });
 
+  it('includes chat_id and msg_id for idempotency tracing (source_ref)', () => {
+    const result = formatMessages(
+      [makeMsg({ id: 'tg-msg-42', chat_jid: '123@s.telegram.org' })],
+      TZ,
+    );
+    expect(result).toContain('chat_id="123@s.telegram.org"');
+    expect(result).toContain('msg_id="tg-msg-42"');
+  });
+
+  it('escapes special characters in chat_id and msg_id', () => {
+    const result = formatMessages(
+      [makeMsg({ id: 'a&b', chat_jid: '<evil>' })],
+      TZ,
+    );
+    expect(result).toContain('chat_id="&lt;evil&gt;"');
+    expect(result).toContain('msg_id="a&amp;b"');
+  });
+
   it('formats multiple messages', () => {
     const msgs = [
       makeMsg({
